@@ -12,9 +12,7 @@ from collections import OrderedDict
 
 # Local
 import methods
-import gles_builders
-import version
-from platform_methods import run_in_subprocess
+import glsl_builders
 
 # Scan possible build platforms
 
@@ -72,7 +70,6 @@ env_base.disabled_modules = []
 env_base.use_ptrcall = False
 env_base.module_version_string = ""
 env_base.msvc = False
-env_base.stable_release = version.status == "stable"
 
 env_base.__class__.disable_module = methods.disable_module
 
@@ -85,7 +82,9 @@ env_base.__class__.add_shared_library = methods.add_shared_library
 env_base.__class__.add_library = methods.add_library
 env_base.__class__.add_program = methods.add_program
 env_base.__class__.CommandNoCache = methods.CommandNoCache
+env_base.__class__.Run = methods.Run
 env_base.__class__.disable_warnings = methods.disable_warnings
+env_base.__class__.module_check_dependencies = methods.module_check_dependencies
 
 env_base["x86_libtheora_opt_gcc"] = False
 env_base["x86_libtheora_opt_vc"] = False
@@ -115,6 +114,7 @@ opts.Add(EnumVariable("target", "Compilation target", "debug", ("debug", "releas
 opts.Add(EnumVariable("optimize", "Optimization type", "speed", ("speed", "size")))
 
 opts.Add(BoolVariable("tools", "Build the tools (a.k.a. the Godot editor)", True))
+opts.Add(BoolVariable("tests", "Build the unit tests", False))
 opts.Add(BoolVariable("use_lto", "Use link-time optimization", False))
 opts.Add(BoolVariable("use_precise_math_checks", "Math checks use very precise epsilon (debug option)", False))
 
@@ -128,7 +128,7 @@ opts.Add("custom_modules", "A list of comma-separated directory paths containing
 opts.Add(BoolVariable("verbose", "Enable verbose output for the compilation", False))
 opts.Add(BoolVariable("progress", "Show a progress indicator during compilation", True))
 opts.Add(EnumVariable("warnings", "Level of compilation warnings", "all", ("extra", "all", "moderate", "no")))
-opts.Add(BoolVariable("werror", "Treat compiler warnings as errors", not env_base.stable_release))
+opts.Add(BoolVariable("werror", "Treat compiler warnings as errors", False))
 opts.Add(BoolVariable("dev", "If yes, alias for verbose=yes warnings=extra werror=yes", False))
 opts.Add("extra_suffix", "Custom extra suffix added to the base filename of all generated binary files", "")
 opts.Add(BoolVariable("vsproj", "Generate a Visual Studio solution", False))
@@ -249,6 +249,10 @@ if env_base["target"] == "debug":
     # http://scons.org/doc/production/HTML/scons-user/ch06s04.html
     env_base.SetOption("implicit_cache", 1)
 
+if not env_base["tools"]:
+    # Export templates can't run unit test tool.
+    env_base["tests"] = False
+
 if env_base["no_editor_splash"]:
     env_base.Append(CPPDEFINES=["NO_EDITOR_SPLASH"])
 
@@ -304,14 +308,17 @@ if selected_platform in platform_list:
     from SCons import __version__ as scons_raw_version
 
     scons_ver = env._get_major_minor_revision(scons_raw_version)
-    if scons_ver >= (3, 1, 1):
-        env.Tool("compilation_db", toolpath=["misc/scons"])
-        env.Alias("compiledb", env.CompilationDatabase("compile_commands.json"))
+
+    if scons_ver >= (4, 0, 0):
+        env.Tool("compilation_db")
+        env.Alias("compiledb", env.CompilationDatabase())
 
     if env["dev"]:
         env["verbose"] = True
         env["warnings"] = "extra"
         env["werror"] = True
+        if env["tools"]:
+            env["tests"] = True
 
     if env["vsproj"]:
         env.vs_incs = []
@@ -454,6 +461,7 @@ if selected_platform in platform_list:
         all_plus_warnings = ["-Wwrite-strings"]
 
         if methods.using_gcc(env):
+            env.Append(CCFLAGS=["-Wno-misleading-indentation"])
             if cc_version_major >= 7:
                 shadow_local_warning = ["-Wshadow-local"]
 
@@ -607,40 +615,31 @@ if selected_platform in platform_list:
         env.Append(CPPDEFINES=["MINIZIP_ENABLED"])
 
     editor_module_list = ["regex"]
-    for x in editor_module_list:
-        if not env["module_" + x + "_enabled"]:
-            if env["tools"]:
-                print(
-                    "Build option 'module_" + x + "_enabled=no' cannot be used with 'tools=yes' (editor), "
-                    "only with 'tools=no' (export template)."
-                )
-                Exit(255)
+    if env["tools"] and not env.module_check_dependencies("tools", editor_module_list):
+        print(
+            "Build option 'module_"
+            + x
+            + "_enabled=no' cannot be used with 'tools=yes' (editor), only with 'tools=no' (export template)."
+        )
+        Exit(255)
 
     if not env["verbose"]:
         methods.no_verbose(sys, env)
 
     if not env["platform"] == "server":
-        env.Append(
-            BUILDERS={
-                "GLES2_GLSL": env.Builder(
-                    action=run_in_subprocess(gles_builders.build_gles2_headers), suffix="glsl.gen.h", src_suffix=".glsl"
-                )
-            }
-        )
-        env.Append(
-            BUILDERS={
-                "RD_GLSL": env.Builder(
-                    action=run_in_subprocess(gles_builders.build_rd_headers), suffix="glsl.gen.h", src_suffix=".glsl"
-                )
-            }
-        )
-        env.Append(
-            BUILDERS={
-                "GLSL_HEADER": env.Builder(
-                    action=run_in_subprocess(gles_builders.build_raw_headers), suffix="glsl.gen.h", src_suffix=".glsl"
-                )
-            }
-        )
+        GLSL_BUILDERS = {
+            "RD_GLSL": env.Builder(
+                action=env.Run(glsl_builders.build_rd_headers, 'Building RD_GLSL header: "$TARGET"'),
+                suffix="glsl.gen.h",
+                src_suffix=".glsl",
+            ),
+            "GLSL_HEADER": env.Builder(
+                action=env.Run(glsl_builders.build_raw_headers, 'Building GLSL header: "$TARGET"'),
+                suffix="glsl.gen.h",
+                src_suffix=".glsl",
+            ),
+        }
+        env.Append(BUILDERS=GLSL_BUILDERS)
 
     scons_cache_path = os.environ.get("SCONS_CACHE")
     if scons_cache_path != None:
@@ -649,8 +648,7 @@ if selected_platform in platform_list:
 
     Export("env")
 
-    # build subdirs, the build order is dependent on link order.
-
+    # Build subdirs, the build order is dependent on link order.
     SConscript("core/SCsub")
     SConscript("servers/SCsub")
     SConscript("scene/SCsub")
@@ -659,9 +657,11 @@ if selected_platform in platform_list:
 
     SConscript("platform/SCsub")
     SConscript("modules/SCsub")
+    if env["tests"]:
+        SConscript("tests/SCsub")
     SConscript("main/SCsub")
 
-    SConscript("platform/" + selected_platform + "/SCsub")  # build selected platform
+    SConscript("platform/" + selected_platform + "/SCsub")  # Build selected platform.
 
     # Microsoft Visual Studio Project Generation
     if env["vsproj"]:
@@ -694,6 +694,9 @@ elif selected_platform != "":
     else:
         Exit(255)
 
-# The following only makes sense when the env is defined, and assumes it is
+# The following only makes sense when the 'env' is defined, and assumes it is.
 if "env" in locals():
     methods.show_progress(env)
+    # TODO: replace this with `env.Dump(format="json")`
+    # once we start requiring SCons 4.0 as min version.
+    methods.dump(env)

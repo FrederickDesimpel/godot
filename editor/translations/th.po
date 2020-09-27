@@ -5,12 +5,14 @@
 # Kaveeta Vivatchai <goodytong@gmail.com>, 2017.
 # Poommetee Ketson (Noshyaar) <poommetee@protonmail.com>, 2017-2018.
 # Thanachart Monpassorn <nunf_2539@hotmail.com>, 2020.
+# Anonymous <noreply@weblate.org>, 2020.
+# Lon3r <mptube.p@gmail.com>, 2020.
 msgid ""
 msgstr ""
 "Project-Id-Version: Godot Engine editor\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2020-03-31 02:26+0000\n"
-"Last-Translator: Thanachart Monpassorn <nunf_2539@hotmail.com>\n"
+"PO-Revision-Date: 2020-08-28 13:09+0000\n"
+"Last-Translator: Lon3r <mptube.p@gmail.com>\n"
 "Language-Team: Thai <https://hosted.weblate.org/projects/godot-engine/godot/"
 "th/>\n"
 "Language: th\n"
@@ -18,7 +20,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Generator: Weblate 4.0-dev\n"
+"X-Generator: Weblate 4.2.1-dev\n"
 
 #: core/math/expression.cpp modules/gdscript/gdscript_functions.cpp
 #: modules/visual_script/visual_script_builtin_funcs.cpp
@@ -41,7 +43,7 @@ msgstr "ค่าอินพุตผิดพลาด %i (ไม่ผ่า�
 
 #: core/math/expression.cpp
 msgid "self can't be used because instance is null (not passed)"
-msgstr "self ไม่สามารถใช้ได้เนื่องจากอินสแตนซ์มีค่า null (ไม่ผ่าน)"
+msgstr "self ไม่สามารถใช้ได้เนื่องจาก instance ว่าง (ไม่ผ่าน)"
 
 #: core/math/expression.cpp
 msgid "Invalid operands to operator %s, %s and %s."
@@ -57,7 +59,7 @@ msgstr "ชื่อดัชนีของ '%s' ผิดพลาด สำ�
 
 #: core/math/expression.cpp
 msgid "Invalid arguments to construct '%s'"
-msgstr "อากิวเมนต์ไม่ถูกต้องในคอนสตรัก '%s'"
+msgstr "อาร์กิวเมนต์ของคอนสตรัค '%s' ผิดพลาด"
 
 #: core/math/expression.cpp
 msgid "On call to '%s':"
@@ -97,7 +99,7 @@ msgstr "อิสระ"
 
 #: editor/animation_bezier_editor.cpp
 msgid "Balanced"
-msgstr "สมดุล"
+msgstr "ความสมดุล"
 
 #: editor/animation_bezier_editor.cpp
 msgid "Mirror"
@@ -113,7 +115,7 @@ msgstr "ค่า:"
 
 #: editor/animation_bezier_editor.cpp
 msgid "Insert Key Here"
-msgstr "เพิ่มคีย์ที่นี่"
+msgstr "เพิ่มปุ่มที่นี่"
 
 #: editor/animation_bezier_editor.cpp
 msgid "Duplicate Selected Key(s)"
@@ -235,7 +237,7 @@ msgstr "ฟังก์ชัน:"
 
 #: editor/animation_track_editor.cpp
 msgid "Audio Clips:"
-msgstr "คลิปเสียง:"
+msgstr "คลิปเสียง"
 
 #: editor/animation_track_editor.cpp
 msgid "Anim Clips:"
@@ -328,9 +330,8 @@ msgid "Change Animation Update Mode"
 msgstr "เปลี่ยนโหมดการอัพเดทแอนิเมชัน"
 
 #: editor/animation_track_editor.cpp
-#, fuzzy
 msgid "Change Animation Interpolation Mode"
-msgstr "โหนดแอนิเมชัน"
+msgstr "เปลี่ยนโหมดการประมาณค่าช่วงของแอนิเมชัน"
 
 #: editor/animation_track_editor.cpp
 msgid "Change Animation Loop Mode"
@@ -381,9 +382,8 @@ msgid "Anim Insert Key"
 msgstr "แทรกคีย์แอนิเมชัน"
 
 #: editor/animation_track_editor.cpp
-#, fuzzy
 msgid "Change Animation Step"
-msgstr "แก้ไขความเร็วแอนิเมชัน"
+msgstr "แก้ไขช่วงของแอนิเมชัน"
 
 #: editor/animation_track_editor.cpp
 msgid "Rearrange Tracks"
@@ -391,7 +391,7 @@ msgstr "จัดเรียงแทร็ก"
 
 #: editor/animation_track_editor.cpp
 msgid "Transform tracks only apply to Spatial-based nodes."
-msgstr ""
+msgstr "แปลงแทร็กเฉพาะที่ Spatial-based nodes"
 
 #: editor/animation_track_editor.cpp
 msgid ""
@@ -504,9 +504,8 @@ msgid "Group tracks by node or display them as plain list."
 msgstr ""
 
 #: editor/animation_track_editor.cpp
-#, fuzzy
 msgid "Snap:"
-msgstr "จำกัดการเคลื่อนย้าย"
+msgstr "สแนป:"
 
 #: editor/animation_track_editor.cpp
 #, fuzzy
@@ -518,6 +517,7 @@ msgid "Seconds"
 msgstr "วินาที"
 
 #: editor/animation_track_editor.cpp
+#: editor/plugins/sprite_frames_editor_plugin.cpp
 msgid "FPS"
 msgstr "เฟรมเรท"
 
@@ -696,7 +696,7 @@ msgstr "ตรงตามอักษรพิมพ์เล็ก-ใหญ�
 msgid "Whole Words"
 msgstr "ทั้งคำ"
 
-#: editor/code_editor.cpp editor/rename_dialog.cpp
+#: editor/code_editor.cpp
 msgid "Replace"
 msgstr "แทนที่"
 
@@ -744,6 +744,10 @@ msgstr "เลขบรรทัดและคอลัมน์"
 #: editor/connections_dialog.cpp
 msgid "Method in target node must be specified."
 msgstr "ต้องระบุเมธอดในโหนดเป้าหมาย"
+
+#: editor/connections_dialog.cpp
+msgid "Method name must be a valid identifier."
+msgstr "ไม่สามารถใช้ชื่อนี้ได้."
 
 #: editor/connections_dialog.cpp
 msgid ""
@@ -825,7 +829,6 @@ msgstr "ไม่สามารถเชื่อมต่อสัญญาณ
 #: editor/export_template_manager.cpp editor/groups_editor.cpp
 #: editor/plugins/animation_player_editor_plugin.cpp
 #: editor/plugins/asset_library_editor_plugin.cpp
-#: editor/plugins/canvas_item_editor_plugin.cpp
 #: editor/plugins/resource_preloader_editor_plugin.cpp
 #: editor/plugins/script_editor_plugin.cpp
 #: editor/plugins/sprite_frames_editor_plugin.cpp
@@ -882,6 +885,11 @@ msgid "Signals"
 msgstr "สัญญาณ"
 
 #: editor/connections_dialog.cpp
+#, fuzzy
+msgid "Filter signals"
+msgstr "ตัวกรองไทล์"
+
+#: editor/connections_dialog.cpp
 msgid "Are you sure you want to remove all connections from this signal?"
 msgstr ""
 
@@ -919,7 +927,7 @@ msgid "Recent:"
 msgstr "ล่าสุด:"
 
 #: editor/create_dialog.cpp editor/plugins/script_editor_plugin.cpp
-#: editor/property_selector.cpp editor/quick_open.cpp
+#: editor/property_selector.cpp editor/quick_open.cpp editor/rename_dialog.cpp
 #: modules/visual_script/visual_script_property_selector.cpp
 msgid "Search:"
 msgstr "ค้นหา:"
@@ -1099,6 +1107,9 @@ msgstr "ผู้ริเริ่มโครงการ"
 msgid "Lead Developer"
 msgstr "ผู้พัฒนาหลัก"
 
+#. TRANSLATORS: This refers to a job title.
+#. The trailing space is used to distinguish with the project list application,
+#. you do not have to keep it in your translation.
 #: editor/editor_about.cpp
 msgid "Project Manager "
 msgstr "ผู้จัดการโครงการ "
@@ -1118,6 +1129,16 @@ msgstr "ผู้สนับสนุนระดับทองคำขาว
 #: editor/editor_about.cpp
 msgid "Gold Sponsors"
 msgstr "ผู้สนับสนุนระดับทอง"
+
+#: editor/editor_about.cpp
+#, fuzzy
+msgid "Silver Sponsors"
+msgstr "ผู้บริจาคระดับเงิน"
+
+#: editor/editor_about.cpp
+#, fuzzy
+msgid "Bronze Sponsors"
+msgstr "ผู้บริจาคระดับทองแดง"
 
 #: editor/editor_about.cpp
 msgid "Mini Sponsors"
@@ -1434,17 +1455,9 @@ msgstr "เปิด"
 msgid "Rearrange Autoloads"
 msgstr "จัดลำดับออโต้โหลด"
 
-#: editor/editor_autoload_settings.cpp editor/script_create_dialog.cpp
-msgid "Invalid path."
-msgstr "ตำแหน่งผิดพลาด"
-
-#: editor/editor_autoload_settings.cpp editor/script_create_dialog.cpp
-msgid "File does not exist."
-msgstr "ไม่พบไฟล์"
-
 #: editor/editor_autoload_settings.cpp
-msgid "Not in resource path."
-msgstr "ไม่อยู่ในโฟลเดอร์รีซอร์ส"
+msgid "Can't add autoload:"
+msgstr "เพิ่มออโต้โหลดไม่ได้:"
 
 #: editor/editor_autoload_settings.cpp
 msgid "Add AutoLoad"
@@ -1602,18 +1615,18 @@ msgstr "แก้ไขผังฉาก"
 
 #: editor/editor_feature_profile.cpp
 #, fuzzy
-msgid "Import Dock"
-msgstr "นำเข้า"
-
-#: editor/editor_feature_profile.cpp
-#, fuzzy
 msgid "Node Dock"
 msgstr "โหมดเคลื่อนย้าย"
 
 #: editor/editor_feature_profile.cpp
 #, fuzzy
-msgid "FileSystem and Import Docks"
+msgid "FileSystem Dock"
 msgstr "ระบบไฟล์"
+
+#: editor/editor_feature_profile.cpp
+#, fuzzy
+msgid "Import Dock"
+msgstr "นำเข้า"
 
 #: editor/editor_feature_profile.cpp
 msgid "Erase profile '%s'? (no undo)"
@@ -1875,7 +1888,7 @@ msgstr "ไฟล์และโฟลเดอร์:"
 
 #: editor/editor_file_dialog.cpp editor/plugins/sprite_editor_plugin.cpp
 #: editor/plugins/style_box_editor_plugin.cpp
-#: editor/plugins/theme_editor_plugin.cpp
+#: editor/plugins/theme_editor_plugin.cpp editor/rename_dialog.cpp
 msgid "Preview:"
 msgstr "ตัวอย่าง:"
 
@@ -1940,7 +1953,7 @@ msgstr "ค่าเริ่มต้น:"
 
 #: editor/editor_help.cpp
 msgid "Methods"
-msgstr "รายชื่อเมท็อด"
+msgstr "เมท็อด"
 
 #: editor/editor_help.cpp
 msgid "Theme Properties"
@@ -2057,7 +2070,7 @@ msgstr "กำหนด"
 
 #: editor/editor_inspector.cpp
 msgid "Set Multiple:"
-msgstr ""
+msgstr "กำหนด หลายอย่าง:"
 
 #: editor/editor_log.cpp
 msgid "Output:"
@@ -2109,19 +2122,21 @@ msgstr "โหนด"
 
 #: editor/editor_network_profiler.cpp
 msgid "Incoming RPC"
-msgstr ""
+msgstr "RPC กำลังมา"
 
 #: editor/editor_network_profiler.cpp
 msgid "Incoming RSET"
-msgstr ""
+msgstr "RSET กำลังมา"
 
 #: editor/editor_network_profiler.cpp
+#, fuzzy
 msgid "Outgoing RPC"
-msgstr ""
+msgstr "RPC กำลังออก"
 
 #: editor/editor_network_profiler.cpp
+#, fuzzy
 msgid "Outgoing RSET"
-msgstr ""
+msgstr "RSET กำลังออก"
 
 #: editor/editor_node.cpp editor/project_manager.cpp
 msgid "New Window"
@@ -2296,10 +2311,6 @@ msgid "There is no defined scene to run."
 msgstr "ยังไม่ได้เลือกฉากที่จะเล่น"
 
 #: editor/editor_node.cpp
-msgid "Current scene was never saved, please save it prior to running."
-msgstr "ฉากปัจจุบันยังไม่ได้บันทึก กรุณาบันทึกก่อนเริ่มโปรแกรม"
-
-#: editor/editor_node.cpp
 msgid "Could not start subprocess!"
 msgstr "ไม่สามารถเริ่มขั้นตอนย่อย!"
 
@@ -2384,12 +2395,15 @@ msgid "Can't reload a scene that was never saved."
 msgstr "ฉากยังไม่ได้บันทึก ไม่สามารถโหลดใหม่ได้"
 
 #: editor/editor_node.cpp
-msgid "Revert"
-msgstr "คืนกลับ"
+#, fuzzy
+msgid "Reload Saved Scene"
+msgstr "บันทึกฉาก"
 
 #: editor/editor_node.cpp
-msgid "This action cannot be undone. Revert anyway?"
-msgstr "การคืนกลับไม่สามารถยกเลิกได้ คืนกลับ?"
+msgid ""
+"The current scene has unsaved changes.\n"
+"Reload the saved scene anyway? This action cannot be undone."
+msgstr ""
 
 #: editor/editor_node.cpp
 msgid "Quick Run Scene..."
@@ -2667,10 +2681,6 @@ msgid "Redo"
 msgstr "ทำซ้ำ"
 
 #: editor/editor_node.cpp
-msgid "Revert Scene"
-msgstr "คืนกลับฉาก"
-
-#: editor/editor_node.cpp
 msgid "Miscellaneous project or scene-wide tools."
 msgstr "โปรเจกต์และเครื่องมืออื่น ๆ"
 
@@ -2730,22 +2740,28 @@ msgstr "ส่งออกพร้อมการแก้ไขจุดบก
 
 #: editor/editor_node.cpp
 msgid ""
-"When exporting or deploying, the resulting executable will attempt to "
-"connect to the IP of this computer in order to be debugged."
-msgstr "เมื่อส่งออก โปรแกรมจะพยายามเชื่อมต่อมายังคอมพิวเตอร์เครื่องนี้เพื่อทำการแก้ไขจุดบกพร่อง"
+"When this option is enabled, using one-click deploy will make the executable "
+"attempt to connect to this computer's IP so the running project can be "
+"debugged.\n"
+"This option is intended to be used for remote debugging (typically with a "
+"mobile device).\n"
+"You don't need to enable it to use the GDScript debugger locally."
+msgstr ""
 
 #: editor/editor_node.cpp
-msgid "Small Deploy with Network FS"
+#, fuzzy
+msgid "Small Deploy with Network Filesystem"
 msgstr "ส่งออกโดยใช้ระบบไฟล์เครือข่าย"
 
 #: editor/editor_node.cpp
+#, fuzzy
 msgid ""
-"When this option is enabled, export or deploy will produce a minimal "
-"executable.\n"
+"When this option is enabled, using one-click deploy for Android will only "
+"export an executable without the project data.\n"
 "The filesystem will be provided from the project by the editor over the "
 "network.\n"
-"On Android, deploy will use the USB cable for faster performance. This "
-"option speeds up testing for games with a large footprint."
+"On Android, deploying will use the USB cable for faster performance. This "
+"option speeds up testing for projects with large assets."
 msgstr ""
 "ถ้าเปิดตัวเลือกนี้ ตัวเกมที่ส่งออกจะมีขนาดแค่พอใช้งานได้\n"
 "ตัวเกมจะได้รับระบบไฟล์จากโปรแกรมแก้ไขผ่านเครือข่าย\n"
@@ -2756,9 +2772,10 @@ msgid "Visible Collision Shapes"
 msgstr "ขอบเขตการชนที่มองเห็นได้"
 
 #: editor/editor_node.cpp
+#, fuzzy
 msgid ""
-"Collision shapes and raycast nodes (for 2D and 3D) will be visible on the "
-"running game if this option is turned on."
+"When this option is enabled, collision shapes and raycast nodes (for 2D and "
+"3D) will be visible in the running project."
 msgstr "รูปทรงกายภาพและรังสี (2D และ 3D) จะมองเห็นได้ขณะเริ่มโปรแกรมถ้าเปิดตัวเลือกนี้"
 
 #: editor/editor_node.cpp
@@ -2766,35 +2783,40 @@ msgid "Visible Navigation"
 msgstr "แสดงการนำทาง"
 
 #: editor/editor_node.cpp
+#, fuzzy
 msgid ""
-"Navigation meshes and polygons will be visible on the running game if this "
-"option is turned on."
+"When this option is enabled, navigation meshes and polygons will be visible "
+"in the running project."
 msgstr "รูปทรงที่มีเส้นนำทางจะมองเห็นได้เมื่อเริ่มโปรแกรมถ้าเปิดตัวเลือกนี้"
 
 #: editor/editor_node.cpp
-msgid "Sync Scene Changes"
+#, fuzzy
+msgid "Synchronize Scene Changes"
 msgstr "ซิงค์การเปลี่ยนแปลงฉาก"
 
 #: editor/editor_node.cpp
+#, fuzzy
 msgid ""
-"When this option is turned on, any changes made to the scene in the editor "
-"will be replicated in the running game.\n"
-"When used remotely on a device, this is more efficient with network "
-"filesystem."
+"When this option is enabled, any changes made to the scene in the editor "
+"will be replicated in the running project.\n"
+"When used remotely on a device, this is more efficient when the network "
+"filesystem option is enabled."
 msgstr ""
 "ถ้าเปิดตัวเลือกนี้ โปรแกรมที่รันอยู่จะได้รับการแก้ไขทันที\n"
 "เมื่อใช้กับอุปกรณ์แบบรีโมท จะดีกว่าถ้าเปิดระบบไฟล์เครือข่ายด้วย"
 
 #: editor/editor_node.cpp
-msgid "Sync Script Changes"
+#, fuzzy
+msgid "Synchronize Script Changes"
 msgstr "ซิงค์การเปลี่ยนแปลงสคริปต์"
 
 #: editor/editor_node.cpp
+#, fuzzy
 msgid ""
-"When this option is turned on, any script that is saved will be reloaded on "
-"the running game.\n"
-"When used remotely on a device, this is more efficient with network "
-"filesystem."
+"When this option is enabled, any script that is saved will be reloaded in "
+"the running project.\n"
+"When used remotely on a device, this is more efficient when the network "
+"filesystem option is enabled."
 msgstr ""
 "เมื่อเปิดตัวเลือกนี้ สคริปต์ที่บันทึกจะโหลดในเกมทันที\n"
 "ถ้าใช้กับอุปกรณ์รีโมท จะดีกว่าถ้าเปิดระบบไฟล์เครือข่ายด้วย"
@@ -2856,7 +2878,7 @@ msgstr "ช่วยเหลือ"
 #: editor/plugins/script_text_editor.cpp
 #: editor/plugins/shader_editor_plugin.cpp editor/plugins/text_editor.cpp
 #: editor/plugins/visual_shader_editor_plugin.cpp editor/project_manager.cpp
-#: editor/project_settings_editor.cpp editor/rename_dialog.cpp
+#: editor/project_settings_editor.cpp editor/settings_config_dialog.cpp
 msgid "Search"
 msgstr "ค้นหา"
 
@@ -3257,9 +3279,11 @@ msgid "Add Key/Value Pair"
 msgstr "เพิ่มคู่ของคีย์/ค่า"
 
 #: editor/editor_run_native.cpp
+#, fuzzy
 msgid ""
 "No runnable export preset found for this platform.\n"
-"Please add a runnable preset in the export menu."
+"Please add a runnable preset in the Export menu or define an existing preset "
+"as runnable."
 msgstr ""
 "ไม่มีแม่แบบส่งออกที่สามารถรันเกมได้ของแพลตฟอร์มนี้\n"
 "กรุณาเพิ่มแม่แบบส่งออกในเมนูส่งออก"
@@ -3287,6 +3311,11 @@ msgstr "รันสคริปต์ไม่ได้:"
 #: editor/editor_run_script.cpp
 msgid "Did you forget the '_run' method?"
 msgstr "ลืมใส่เมท็อด '_run' หรือไม่?"
+
+#: editor/editor_spin_slider.cpp
+#, fuzzy
+msgid "Hold Ctrl to round to integers. Hold Shift for more precise changes."
+msgstr "กด Ctrl ค้างเพื่อวาง Getter กด Shift ค้างเพื่อวาง generic signature"
 
 #: editor/editor_sub_scene.cpp
 msgid "Select Node(s) to Import"
@@ -3876,6 +3905,10 @@ msgstr "สคริปต์หลังนำเข้าผิดพลาด
 #: editor/import/resource_importer_scene.cpp
 msgid "Error running post-import script:"
 msgstr "ผิดพลาดขณะรันสคริปต์หลังนำเข้า:"
+
+#: editor/import/resource_importer_scene.cpp
+msgid "Did you return a Node-derived object in the `post_import()` method?"
+msgstr ""
 
 #: editor/import/resource_importer_scene.cpp
 msgid "Saving..."
@@ -4636,9 +4669,8 @@ msgid "Set the end animation. This is useful for sub-transitions."
 msgstr ""
 
 #: editor/plugins/animation_state_machine_editor.cpp
-#, fuzzy
 msgid "Transition: "
-msgstr "ทรานสิชัน"
+msgstr "ทรานสิชัน: "
 
 #: editor/plugins/animation_state_machine_editor.cpp
 msgid "Play Mode:"
@@ -5014,7 +5046,7 @@ msgid "Bake Lightmaps"
 msgstr "สร้าง Lightmaps"
 
 #: editor/plugins/camera_editor_plugin.cpp
-#: editor/plugins/spatial_editor_plugin.cpp editor/rename_dialog.cpp
+#: editor/plugins/spatial_editor_plugin.cpp
 msgid "Preview"
 msgstr "ตัวอย่าง"
 
@@ -5270,9 +5302,8 @@ msgid "Create Custom Bone(s) from Node(s)"
 msgstr "สร้างจุดปะทุจาก Mesh"
 
 #: editor/plugins/canvas_item_editor_plugin.cpp
-#, fuzzy
 msgid "Clear Bones"
-msgstr "ลบท่าทาง"
+msgstr "ลบโครง"
 
 #: editor/plugins/canvas_item_editor_plugin.cpp
 msgid "Make IK Chain"
@@ -5979,11 +6010,12 @@ msgid "Remove item %d?"
 msgstr "ลบไอเทม %d?"
 
 #: editor/plugins/mesh_library_editor_plugin.cpp
-#, fuzzy
 msgid ""
 "Update from existing scene?:\n"
 "%s"
-msgstr "อัพเดตจากฉาก"
+msgstr ""
+"อัพเดตจากฉากที่มีอยู่หรือไม่\n"
+"%s"
 
 #: editor/plugins/mesh_library_editor_plugin.cpp
 #, fuzzy
@@ -6601,9 +6633,8 @@ msgid "Close and save changes?"
 msgstr "ปิดและบันทึก?"
 
 #: editor/plugins/script_editor_plugin.cpp
-#, fuzzy
 msgid "Error writing TextFile:"
-msgstr "ผิดพลาดขณะย้ายไฟล์:\n"
+msgstr "ผิดพลาดขณะย้ายไฟล์:"
 
 #: editor/plugins/script_editor_plugin.cpp
 #, fuzzy
@@ -6887,12 +6918,13 @@ msgstr "ลบการเชื่อมโยง '%s' กับ '%s'"
 
 #: editor/plugins/script_text_editor.cpp
 #, fuzzy
-msgid "Line"
-msgstr "บรรทัด:"
+msgid "[Ignore]"
+msgstr "(ละเว้น)"
 
 #: editor/plugins/script_text_editor.cpp
-msgid "(ignore)"
-msgstr "(ละเว้น)"
+#, fuzzy
+msgid "Line"
+msgstr "บรรทัด:"
 
 #: editor/plugins/script_text_editor.cpp
 #, fuzzy
@@ -7080,13 +7112,12 @@ msgid "Go to Previous Breakpoint"
 msgstr "ไปจุดพักก่อนหน้า"
 
 #: editor/plugins/shader_editor_plugin.cpp
-#, fuzzy
 msgid ""
 "This shader has been modified on on disk.\n"
 "What action should be taken?"
 msgstr ""
-"ไฟล์ต่อไปนี้ในดิสก์ใหม่กว่า\n"
-"จะทำอย่างไรต่อไป?:"
+"เชดเดอร์ถูกแก้ไขบนดิสก์\n"
+"จะทำอย่างไรต่อไป?"
 
 #: editor/plugins/shader_editor_plugin.cpp
 msgid "Shader"
@@ -7391,6 +7422,15 @@ msgstr ""
 #: editor/plugins/spatial_editor_plugin.cpp
 msgid "XForm Dialog"
 msgstr "เครื่องมือเคลื่อนย้าย"
+
+#: editor/plugins/spatial_editor_plugin.cpp
+msgid ""
+"Click to toggle between visibility states.\n"
+"\n"
+"Open eye: Gizmo is visible.\n"
+"Closed eye: Gizmo is hidden.\n"
+"Half-open eye: Gizmo is also visible through opaque surfaces (\"x-ray\")."
+msgstr ""
 
 #: editor/plugins/spatial_editor_plugin.cpp
 #, fuzzy
@@ -7745,7 +7785,8 @@ msgid "New Animation"
 msgstr "แอนิเมชันใหม่"
 
 #: editor/plugins/sprite_frames_editor_plugin.cpp
-msgid "Speed (FPS):"
+#, fuzzy
+msgid "Speed:"
 msgstr "ความเร็ว (เฟรม/วินาที):"
 
 #: editor/plugins/sprite_frames_editor_plugin.cpp
@@ -8260,17 +8301,16 @@ msgid ""
 msgstr ""
 
 #: editor/plugins/tile_set_editor_plugin.cpp
-#, fuzzy
 msgid "Remove selected texture? This will remove all tiles which use it."
-msgstr "ลบรายการ"
+msgstr "ลบเทกเจอร์หรือไม่ โดยจะลบไทล์ทุกอันที่ใช้เทกเจอร์นี้"
 
 #: editor/plugins/tile_set_editor_plugin.cpp
 msgid "You haven't selected a texture to remove."
-msgstr ""
+msgstr "คุณยังไม่ได้เลือกเทกเจอร์ที่จะลบ"
 
 #: editor/plugins/tile_set_editor_plugin.cpp
 msgid "Create from scene? This will overwrite all current tiles."
-msgstr ""
+msgstr "สร้างจากสกรีน นี่จะสร้างทับไทล์เดิม"
 
 #: editor/plugins/tile_set_editor_plugin.cpp
 msgid "Merge from scene?"
@@ -8291,16 +8331,16 @@ msgid ""
 msgstr ""
 
 #: editor/plugins/tile_set_editor_plugin.cpp
-#, fuzzy
 msgid "Delete selected Rect."
-msgstr "ลบไฟล์ที่เลือก?"
+msgstr "ลบสี่เหลี่ยมที่เลือก"
 
 #: editor/plugins/tile_set_editor_plugin.cpp
-#, fuzzy
 msgid ""
 "Select current edited sub-tile.\n"
 "Click on another Tile to edit it."
-msgstr "เลือกไทล์ย่อยที่กำลังปรับแต่ง"
+msgstr ""
+"เลือกไทล์ย่อยอันปัจจุบันเพื่อปรับแต่ง\n"
+"คลิกที่ไทล์อันอื่นพื่อปรับแต่ง"
 
 #: editor/plugins/tile_set_editor_plugin.cpp
 msgid "Delete polygon."
@@ -8319,12 +8359,13 @@ msgstr ""
 "คลิกไทล์อันอื่นเพื่อปรับแต่ง"
 
 #: editor/plugins/tile_set_editor_plugin.cpp
-#, fuzzy
 msgid ""
 "Select sub-tile to use as icon, this will be also used on invalid autotile "
 "bindings.\n"
 "Click on another Tile to edit it."
-msgstr "เลือกรูปภาพย่อยเพื่อทำเป็นไอคอน ภาพนี้จะใช้แสดงเมื่อการ"
+msgstr ""
+"เลือกไทล์ย่อยเพื่อใช้เป็นไอคอน สามารถใช้เมื่อ autotile bindings มีความผิดพลาด\n"
+"คลิกไทล์อันอื่นเพื่อแก้ไขไทล์นั้น"
 
 #: editor/plugins/tile_set_editor_plugin.cpp
 msgid ""
@@ -8335,11 +8376,12 @@ msgstr ""
 "คลิกไทล์อันอื่นเพื่อแก้ไขไทล์นั้น"
 
 #: editor/plugins/tile_set_editor_plugin.cpp
-#, fuzzy
 msgid ""
 "Select sub-tile to change its z index.\n"
 "Click on another Tile to edit it."
-msgstr "เลือกไทล์ย่อยเพื่อจัดลำดับความสำคัญ"
+msgstr ""
+"เลือกไทล์ย่อยเพื่อเปลี่ยน z index\n"
+"คลิกที่ไทล์อื่นเพื่อแก้ไขไทล์นั้น"
 
 #: editor/plugins/tile_set_editor_plugin.cpp
 msgid "Set Tile Region"
@@ -9477,11 +9519,12 @@ msgid "Resources to export:"
 msgstr "รีซอร์สที่จะส่งออก:"
 
 #: editor/project_export.cpp
-#, fuzzy
 msgid ""
 "Filters to export non-resource files/folders\n"
 "(comma-separated, e.g: *.json, *.txt, docs/*)"
-msgstr "ตัวกรองไฟล์ที่จะส่งออกเพิ่มเติม (คั่นด้วยจุลภาค ตัวอย่างเช่น: *.json, *.txt)"
+msgstr ""
+"ตัวกรองไฟล์ที่จะส่งออกเพิ่มเติม\n"
+"(คั่นด้วยจุลภาค ตัวอย่างเช่น: *.json, *.txt, docs/)"
 
 #: editor/project_export.cpp
 #, fuzzy
@@ -9499,9 +9542,8 @@ msgid "Make Patch"
 msgstr "สร้างแพตช์"
 
 #: editor/project_export.cpp
-#, fuzzy
 msgid "Pack File"
-msgstr " ไฟล์"
+msgstr "ไฟล์"
 
 #: editor/project_export.cpp
 msgid "Features"
@@ -9839,6 +9881,7 @@ msgstr ""
 "ทำการสแกนหาโปรเจกต์ ในโฟลเดอร์ %s หรือไม่?\n"
 "อาจจะใช้เวลาสักครู่"
 
+#. TRANSLATORS: This refers to the application where users manage their Godot projects.
 #: editor/project_manager.cpp
 msgid "Project Manager"
 msgstr "ตัวจัดการโปรเจกต์"
@@ -10279,11 +10322,18 @@ msgid "Batch Rename"
 msgstr "เปลี่ยนชื่อ"
 
 #: editor/rename_dialog.cpp
-msgid "Prefix"
+#, fuzzy
+msgid "Replace:"
+msgstr "แทนที่: "
+
+#: editor/rename_dialog.cpp
+#, fuzzy
+msgid "Prefix:"
 msgstr "คำนำหน้า"
 
 #: editor/rename_dialog.cpp
-msgid "Suffix"
+#, fuzzy
+msgid "Suffix:"
 msgstr "คำต่อท้าย"
 
 #: editor/rename_dialog.cpp
@@ -10330,7 +10380,7 @@ msgid "Per-level Counter"
 msgstr "ตัวนับต่อเลเวล"
 
 #: editor/rename_dialog.cpp
-msgid "If set the counter restarts for each group of child nodes"
+msgid "If set, the counter restarts for each group of child nodes."
 msgstr ""
 
 #: editor/rename_dialog.cpp
@@ -10391,7 +10441,7 @@ msgstr "รีเซ็ตซูม"
 
 #: editor/rename_dialog.cpp
 #, fuzzy
-msgid "Regular Expression Error"
+msgid "Regular Expression Error:"
 msgstr "แก้ไขสมการ"
 
 #: editor/rename_dialog.cpp
@@ -10461,8 +10511,9 @@ msgid "Instance Child Scene"
 msgstr "อินสแตนซ์ฉากลูก"
 
 #: editor/scene_tree_dock.cpp
-msgid "Clear Script"
-msgstr "ลบสคริปต์"
+#, fuzzy
+msgid "Detach Script"
+msgstr "แนบสคริปต์"
 
 #: editor/scene_tree_dock.cpp
 msgid "This operation can't be done on the tree root."
@@ -10495,6 +10546,11 @@ msgstr ""
 #: editor/scene_tree_dock.cpp
 msgid "Make node as Root"
 msgstr "ทำโหนดให้เป็นโหนดแม่"
+
+#: editor/scene_tree_dock.cpp
+#, fuzzy
+msgid "Delete %d nodes and any children?"
+msgstr "ลบโหนด \"%s\" และโหนดลูก?"
 
 #: editor/scene_tree_dock.cpp
 msgid "Delete %d nodes?"
@@ -10620,6 +10676,13 @@ msgid "Open Documentation"
 msgstr "เปิดคู่มือ"
 
 #: editor/scene_tree_dock.cpp
+msgid ""
+"Cannot attach a script: there are no languages registered.\n"
+"This is probably because this editor was built with all language modules "
+"disabled."
+msgstr ""
+
+#: editor/scene_tree_dock.cpp
 msgid "Add Child Node"
 msgstr "เพิ่มโหนดลูก"
 
@@ -10666,11 +10729,13 @@ msgid ""
 msgstr "อินสแตนซ์ฉากเป็นโหนด สร้างฉากสืบทอดถ้าไม่มีโหนดราก"
 
 #: editor/scene_tree_dock.cpp
-msgid "Attach a new or existing script for the selected node."
+#, fuzzy
+msgid "Attach a new or existing script to the selected node."
 msgstr "สร้างสคริปต์ให้โหนดที่เลือก"
 
 #: editor/scene_tree_dock.cpp
-msgid "Clear a script for the selected node."
+#, fuzzy
+msgid "Detach the script from the selected node."
 msgstr "ลบสคริปต์ของโหนดที่เลือก"
 
 #: editor/scene_tree_dock.cpp
@@ -10810,6 +10875,10 @@ msgid "A directory with the same name exists."
 msgstr "มีไดเรกทอรีชื่อนี้อยู่แล้ว"
 
 #: editor/script_create_dialog.cpp
+msgid "File does not exist."
+msgstr "ไม่พบไฟล์"
+
+#: editor/script_create_dialog.cpp
 #, fuzzy
 msgid "Invalid extension."
 msgstr "นามสกุลไม่ถูกต้อง"
@@ -10851,6 +10920,10 @@ msgstr "เปิดสคริปต์"
 #, fuzzy
 msgid "File exists, it will be reused."
 msgstr "มีไฟล์นี้อยู่แล้ว จะนำมาใช้"
+
+#: editor/script_create_dialog.cpp
+msgid "Invalid path."
+msgstr "ตำแหน่งผิดพลาด"
 
 #: editor/script_create_dialog.cpp
 msgid "Invalid class name."
@@ -11894,6 +11967,10 @@ msgid "Debug keystore not configured in the Editor Settings nor in the preset."
 msgstr ""
 
 #: platform/android/export/export.cpp
+msgid "Release keystore incorrectly configured in the export preset."
+msgstr ""
+
+#: platform/android/export/export.cpp
 msgid "Custom build requires a valid Android SDK path in Editor Settings."
 msgstr ""
 
@@ -11914,6 +11991,32 @@ msgstr ""
 #: platform/android/export/export.cpp
 msgid "Invalid package name:"
 msgstr "ชื่อแพ็คเกจผิดพลาด:"
+
+#: platform/android/export/export.cpp
+msgid ""
+"Invalid \"GodotPaymentV3\" module included in the \"android/modules\" "
+"project setting (changed in Godot 3.2.2).\n"
+msgstr ""
+
+#: platform/android/export/export.cpp
+msgid "\"Use Custom Build\" must be enabled to use the plugins."
+msgstr ""
+
+#: platform/android/export/export.cpp
+msgid ""
+"\"Degrees Of Freedom\" is only valid when \"Xr Mode\" is \"Oculus Mobile VR"
+"\"."
+msgstr ""
+
+#: platform/android/export/export.cpp
+msgid ""
+"\"Hand Tracking\" is only valid when \"Xr Mode\" is \"Oculus Mobile VR\"."
+msgstr ""
+
+#: platform/android/export/export.cpp
+msgid ""
+"\"Focus Awareness\" is only valid when \"Xr Mode\" is \"Oculus Mobile VR\"."
+msgstr ""
 
 #: platform/android/export/export.cpp
 msgid ""
@@ -12109,6 +12212,12 @@ msgid ""
 "A shape must be provided for CollisionShape2D to function. Please create a "
 "shape resource for it!"
 msgstr "ต้องมีรูปทรงเพื่อให้ CollisionShape2D ทำงานได้ กรุณาสร้างรูปทรง!"
+
+#: scene/2d/collision_shape_2d.cpp
+msgid ""
+"Polygon-based shapes are not meant be used nor edited directly through the "
+"CollisionShape2D node. Please use the CollisionPolygon2D node instead."
+msgstr ""
 
 #: scene/2d/cpu_particles_2d.cpp
 msgid ""
@@ -12348,6 +12457,11 @@ msgid ""
 msgstr ""
 "ไดรเวอร์วีดีโอ GLES2 ไม่สนับสนุน GIProbe\n"
 "ใช้ BakedLightmap แทน"
+
+#: scene/3d/interpolated_camera.cpp
+msgid ""
+"InterpolatedCamera has been deprecated and will be removed in Godot 4.0."
+msgstr ""
 
 #: scene/3d/light.cpp
 msgid "A SpotLight with an angle wider than 90 degrees cannot cast shadows."
@@ -12630,6 +12744,34 @@ msgstr ""
 #: servers/visual/shader_language.cpp
 msgid "Constants cannot be modified."
 msgstr "ค่าคงที่ไม่สามารถแก้ไขได้"
+
+#, fuzzy
+#~ msgid "FileSystem and Import Docks"
+#~ msgstr "ระบบไฟล์ และ นำเข้า"
+
+#~ msgid ""
+#~ "When exporting or deploying, the resulting executable will attempt to "
+#~ "connect to the IP of this computer in order to be debugged."
+#~ msgstr ""
+#~ "เมื่อส่งออก โปรแกรมจะพยายามเชื่อมต่อมายังคอมพิวเตอร์เครื่องนี้เพื่อทำการแก้ไขจุดบกพร่อง"
+
+#~ msgid "Current scene was never saved, please save it prior to running."
+#~ msgstr "ฉากปัจจุบันยังไม่ได้บันทึก กรุณาบันทึกก่อนเริ่มโปรแกรม"
+
+#~ msgid "Not in resource path."
+#~ msgstr "ไม่อยู่ในโฟลเดอร์รีซอร์ส"
+
+#~ msgid "Revert"
+#~ msgstr "คืนกลับ"
+
+#~ msgid "This action cannot be undone. Revert anyway?"
+#~ msgstr "การคืนกลับไม่สามารถยกเลิกได้ คืนกลับ?"
+
+#~ msgid "Revert Scene"
+#~ msgstr "คืนกลับฉาก"
+
+#~ msgid "Clear Script"
+#~ msgstr "ลบสคริปต์"
 
 #~ msgid "Issue Tracker"
 #~ msgstr "ติดตามปัญหา"

@@ -152,7 +152,7 @@ void CustomPropertyEditor::_menu_option(int p_which) {
 						file->add_filter("*." + E->get() + " ; " + E->get().to_upper());
 					}
 
-					file->popup_centered_ratio();
+					file->popup_file_dialog();
 				} break;
 
 				case OBJ_MENU_EDIT: {
@@ -257,7 +257,7 @@ void CustomPropertyEditor::_menu_option(int p_which) {
 
 					if (intype == "ViewportTexture") {
 						scene_tree->set_title(TTR("Pick a Viewport"));
-						scene_tree->popup_centered_ratio();
+						scene_tree->popup_scenetree_dialog();
 						picking_viewport = true;
 						return;
 					}
@@ -326,6 +326,9 @@ bool CustomPropertyEditor::edit(Object *p_owner, const String &p_name, Variant::
 	menu->set_size(Size2(1, 1) * EDSCALE);
 
 	for (int i = 0; i < MAX_VALUE_EDITORS; i++) {
+		if (i < MAX_VALUE_EDITORS / 4) {
+			value_hboxes[i]->hide();
+		}
 		value_editor[i]->hide();
 		value_label[i]->hide();
 		if (i < 4) {
@@ -365,18 +368,18 @@ bool CustomPropertyEditor::edit(Object *p_owner, const String &p_name, Variant::
 				float min = 0, max = 100, step = type == Variant::FLOAT ? .01 : 1;
 				if (c >= 1) {
 					if (!hint_text.get_slice(",", 0).empty()) {
-						min = hint_text.get_slice(",", 0).to_double();
+						min = hint_text.get_slice(",", 0).to_float();
 					}
 				}
 				if (c >= 2) {
 					if (!hint_text.get_slice(",", 1).empty()) {
-						max = hint_text.get_slice(",", 1).to_double();
+						max = hint_text.get_slice(",", 1).to_float();
 					}
 				}
 
 				if (c >= 3) {
 					if (!hint_text.get_slice(",", 2).empty()) {
-						step = hint_text.get_slice(",", 2).to_double();
+						step = hint_text.get_slice(",", 2).to_float();
 					}
 				}
 
@@ -594,7 +597,7 @@ bool CustomPropertyEditor::edit(Object *p_owner, const String &p_name, Variant::
 			} else if (hint == PROPERTY_HINT_METHOD_OF_INSTANCE) {
 				MAKE_PROPSELECT
 
-				Object *instance = ObjectDB::get_instance(ObjectID(hint_text.to_int64()));
+				Object *instance = ObjectDB::get_instance(ObjectID(hint_text.to_int()));
 				if (instance) {
 					property_select->select_method_from_instance(instance, v);
 				}
@@ -604,7 +607,7 @@ bool CustomPropertyEditor::edit(Object *p_owner, const String &p_name, Variant::
 			} else if (hint == PROPERTY_HINT_METHOD_OF_SCRIPT) {
 				MAKE_PROPSELECT
 
-				Object *obj = ObjectDB::get_instance(ObjectID(hint_text.to_int64()));
+				Object *obj = ObjectDB::get_instance(ObjectID(hint_text.to_int()));
 				if (Object::cast_to<Script>(obj)) {
 					property_select->select_method_from_script(Object::cast_to<Script>(obj), v);
 				}
@@ -643,7 +646,7 @@ bool CustomPropertyEditor::edit(Object *p_owner, const String &p_name, Variant::
 			} else if (hint == PROPERTY_HINT_PROPERTY_OF_INSTANCE) {
 				MAKE_PROPSELECT
 
-				Object *instance = ObjectDB::get_instance(ObjectID(hint_text.to_int64()));
+				Object *instance = ObjectDB::get_instance(ObjectID(hint_text.to_int()));
 				if (instance) {
 					property_select->select_property_from_instance(instance, v);
 				}
@@ -654,7 +657,7 @@ bool CustomPropertyEditor::edit(Object *p_owner, const String &p_name, Variant::
 			} else if (hint == PROPERTY_HINT_PROPERTY_OF_SCRIPT) {
 				MAKE_PROPSELECT
 
-				Object *obj = ObjectDB::get_instance(ObjectID(hint_text.to_int64()));
+				Object *obj = ObjectDB::get_instance(ObjectID(hint_text.to_int()));
 				if (Object::cast_to<Script>(obj)) {
 					property_select->select_property_from_script(Object::cast_to<Script>(obj), v);
 				}
@@ -1195,7 +1198,7 @@ void CustomPropertyEditor::_action_pressed(int p_which) {
 							file->add_filter(filter + " ; " + extensions[i].to_upper());
 						}
 					}
-					file->popup_centered_ratio();
+					file->popup_file_dialog();
 				} else {
 					v = "";
 					emit_signal("variant_changed");
@@ -1211,7 +1214,7 @@ void CustomPropertyEditor::_action_pressed(int p_which) {
 					}
 					file->set_file_mode(EditorFileDialog::FILE_MODE_OPEN_DIR);
 					file->clear_filters();
-					file->popup_centered_ratio();
+					file->popup_file_dialog();
 				} else {
 					v = "";
 					emit_signal("variant_changed");
@@ -1224,7 +1227,7 @@ void CustomPropertyEditor::_action_pressed(int p_which) {
 			if (p_which == 0) {
 				picking_viewport = false;
 				scene_tree->set_title(TTR("Pick a Node"));
-				scene_tree->popup_centered_ratio();
+				scene_tree->popup_scenetree_dialog();
 
 			} else if (p_which == 1) {
 				v = NodePath();
@@ -1278,7 +1281,7 @@ void CustomPropertyEditor::_action_pressed(int p_which) {
 					file->add_filter("*." + E->get() + " ; " + E->get().to_upper());
 				}
 
-				file->popup_centered_ratio();
+				file->popup_file_dialog();
 
 			} else if (p_which == 2) {
 				RES r = v;
@@ -1587,7 +1590,7 @@ real_t CustomPropertyEditor::_parse_real_expression(String text) {
 	Error err = expr->parse(text);
 	real_t out;
 	if (err != OK) {
-		out = value_editor[0]->get_text().to_double();
+		out = value_editor[0]->get_text().to_float();
 	} else {
 		out = expr->execute(Array(), nullptr, false);
 	}
@@ -1701,6 +1704,14 @@ void CustomPropertyEditor::config_value_editors(int p_amount, int p_columns, int
 	set_size(Size2(cell_margin + p_label_w + (cell_width + cell_margin + p_label_w) * p_columns, cell_margin + (cell_height + cell_margin) * rows) * EDSCALE);
 
 	for (int i = 0; i < MAX_VALUE_EDITORS; i++) {
+		if (i < MAX_VALUE_EDITORS / 4) {
+			if (i <= p_amount / 4) {
+				value_hboxes[i]->show();
+			} else {
+				value_hboxes[i]->hide();
+			}
+		}
+
 		int c = i % p_columns;
 		int r = i / p_columns;
 
@@ -1729,13 +1740,23 @@ CustomPropertyEditor::CustomPropertyEditor() {
 	read_only = false;
 	updating = false;
 
+	value_vbox = memnew(VBoxContainer);
+	add_child(value_vbox);
+
 	for (int i = 0; i < MAX_VALUE_EDITORS; i++) {
-		value_editor[i] = memnew(LineEdit);
-		add_child(value_editor[i]);
+		if (i < MAX_VALUE_EDITORS / 4) {
+			value_hboxes[i] = memnew(HBoxContainer);
+			value_vbox->add_child(value_hboxes[i]);
+			value_hboxes[i]->hide();
+		}
+		int hbox_idx = i / 4;
 		value_label[i] = memnew(Label);
-		add_child(value_label[i]);
-		value_editor[i]->hide();
+		value_hboxes[hbox_idx]->add_child(value_label[i]);
 		value_label[i]->hide();
+		value_editor[i] = memnew(LineEdit);
+		value_hboxes[hbox_idx]->add_child(value_editor[i]);
+		value_editor[i]->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+		value_editor[i]->hide();
 		value_editor[i]->connect("text_entered", callable_mp(this, &CustomPropertyEditor::_modified));
 		value_editor[i]->connect("focus_entered", callable_mp(this, &CustomPropertyEditor::_focus_enter));
 		value_editor[i]->connect("focus_exited", callable_mp(this, &CustomPropertyEditor::_focus_exit));

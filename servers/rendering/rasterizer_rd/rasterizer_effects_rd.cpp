@@ -218,7 +218,7 @@ void RasterizerEffectsRD::copy_to_atlas_fb(RID p_source_rd_texture, RID p_dest_f
 	RD::get_singleton()->draw_list_draw(draw_list, true);
 }
 
-void RasterizerEffectsRD::copy_to_fb_rect(RID p_source_rd_texture, RID p_dest_framebuffer, const Rect2i &p_rect, bool p_flip_y, bool p_force_luminance, bool p_alpha_to_zero) {
+void RasterizerEffectsRD::copy_to_fb_rect(RID p_source_rd_texture, RID p_dest_framebuffer, const Rect2i &p_rect, bool p_flip_y, bool p_force_luminance, bool p_alpha_to_zero, bool p_srgb, RID p_secondary) {
 	zeromem(&copy_to_fb.push_constant, sizeof(CopyToFbPushConstant));
 
 	if (p_flip_y) {
@@ -230,10 +230,16 @@ void RasterizerEffectsRD::copy_to_fb_rect(RID p_source_rd_texture, RID p_dest_fr
 	if (p_alpha_to_zero) {
 		copy_to_fb.push_constant.alpha_to_zero = true;
 	}
+	if (p_srgb) {
+		copy_to_fb.push_constant.srgb = true;
+	}
 
 	RD::DrawListID draw_list = RD::get_singleton()->draw_list_begin(p_dest_framebuffer, RD::INITIAL_ACTION_KEEP, RD::FINAL_ACTION_READ, RD::INITIAL_ACTION_KEEP, RD::FINAL_ACTION_DISCARD, Vector<Color>(), 1.0, 0, p_rect);
-	RD::get_singleton()->draw_list_bind_render_pipeline(draw_list, copy_to_fb.pipelines[COPY_TO_FB_COPY].get_render_pipeline(RD::INVALID_ID, RD::get_singleton()->framebuffer_get_format(p_dest_framebuffer)));
+	RD::get_singleton()->draw_list_bind_render_pipeline(draw_list, copy_to_fb.pipelines[p_secondary.is_valid() ? COPY_TO_FB_COPY2 : COPY_TO_FB_COPY].get_render_pipeline(RD::INVALID_ID, RD::get_singleton()->framebuffer_get_format(p_dest_framebuffer)));
 	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, _get_uniform_set_from_texture(p_source_rd_texture), 0);
+	if (p_secondary.is_valid()) {
+		RD::get_singleton()->draw_list_bind_uniform_set(draw_list, _get_uniform_set_from_texture(p_secondary), 1);
+	}
 	RD::get_singleton()->draw_list_bind_index_array(draw_list, index_array);
 	RD::get_singleton()->draw_list_set_push_constant(draw_list, &copy_to_fb.push_constant, sizeof(CopyToFbPushConstant));
 	RD::get_singleton()->draw_list_draw(draw_list, true);
@@ -383,7 +389,7 @@ void RasterizerEffectsRD::gaussian_blur(RID p_source_rd_texture, RID p_texture, 
 	RD::get_singleton()->compute_list_end();
 }
 
-void RasterizerEffectsRD::gaussian_glow(RID p_source_rd_texture, RID p_texture, RID p_back_texture, const Size2i &p_size, float p_strength, bool p_first_pass, float p_luminance_cap, float p_exposure, float p_bloom, float p_hdr_bleed_treshold, float p_hdr_bleed_scale, RID p_auto_exposure, float p_auto_exposure_grey) {
+void RasterizerEffectsRD::gaussian_glow(RID p_source_rd_texture, RID p_texture, RID p_back_texture, const Size2i &p_size, float p_strength, bool p_high_quality, bool p_first_pass, float p_luminance_cap, float p_exposure, float p_bloom, float p_hdr_bleed_treshold, float p_hdr_bleed_scale, RID p_auto_exposure, float p_auto_exposure_grey) {
 	zeromem(&copy.push_constant, sizeof(CopyPushConstant));
 
 	CopyMode copy_mode = p_first_pass && p_auto_exposure.is_valid() ? COPY_MODE_GAUSSIAN_GLOW_AUTO_EXPOSURE : COPY_MODE_GAUSSIAN_GLOW;
@@ -409,12 +415,12 @@ void RasterizerEffectsRD::gaussian_glow(RID p_source_rd_texture, RID p_texture, 
 	RD::ComputeListID compute_list = RD::get_singleton()->compute_list_begin();
 	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, copy.pipelines[copy_mode]);
 	RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_texture(p_source_rd_texture), 0);
-	RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_uniform_set_from_image(p_back_texture), 3);
+	RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_uniform_set_from_image(p_texture), 3);
 	if (p_auto_exposure.is_valid() && p_first_pass) {
 		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_texture(p_auto_exposure), 1);
 	}
 
-	copy.push_constant.flags = base_flags | COPY_FLAG_HORIZONTAL | (p_first_pass ? COPY_FLAG_GLOW_FIRST_PASS : 0);
+	copy.push_constant.flags = base_flags | COPY_FLAG_HORIZONTAL | (p_first_pass ? COPY_FLAG_GLOW_FIRST_PASS : 0) | (p_high_quality ? COPY_FLAG_HIGH_QUALITY_GLOW : 0);
 	RD::get_singleton()->compute_list_set_push_constant(compute_list, &copy.push_constant, sizeof(CopyPushConstant));
 
 	RD::get_singleton()->compute_list_dispatch(compute_list, x_groups, y_groups, 1);
@@ -424,8 +430,8 @@ void RasterizerEffectsRD::gaussian_glow(RID p_source_rd_texture, RID p_texture, 
 
 	//VERTICAL
 	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, copy.pipelines[copy_mode]);
-	RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_texture(p_back_texture), 0);
-	RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_uniform_set_from_image(p_texture), 3);
+	RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_texture(p_texture), 0);
+	RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_uniform_set_from_image(p_back_texture), 3);
 
 	copy.push_constant.flags = base_flags;
 	RD::get_singleton()->compute_list_set_push_constant(compute_list, &copy.push_constant, sizeof(CopyPushConstant));
@@ -434,7 +440,7 @@ void RasterizerEffectsRD::gaussian_glow(RID p_source_rd_texture, RID p_texture, 
 	RD::get_singleton()->compute_list_end();
 }
 
-void RasterizerEffectsRD::screen_space_reflection(RID p_diffuse, RID p_normal, RenderingServer::EnvironmentSSRRoughnessQuality p_roughness_quality, RID p_roughness, RID p_blur_radius, RID p_blur_radius2, RID p_metallic, const Color &p_metallic_mask, RID p_depth, RID p_scale_depth, RID p_scale_normal, RID p_output, RID p_output_blur, const Size2i &p_screen_size, int p_max_steps, float p_fade_in, float p_fade_out, float p_tolerance, const CameraMatrix &p_camera) {
+void RasterizerEffectsRD::screen_space_reflection(RID p_diffuse, RID p_normal_roughness, RenderingServer::EnvironmentSSRRoughnessQuality p_roughness_quality, RID p_blur_radius, RID p_blur_radius2, RID p_metallic, const Color &p_metallic_mask, RID p_depth, RID p_scale_depth, RID p_scale_normal, RID p_output, RID p_output_blur, const Size2i &p_screen_size, int p_max_steps, float p_fade_in, float p_fade_out, float p_tolerance, const CameraMatrix &p_camera) {
 	RD::ComputeListID compute_list = RD::get_singleton()->compute_list_begin();
 
 	int32_t x_groups = (p_screen_size.width - 1) / 8 + 1;
@@ -451,7 +457,7 @@ void RasterizerEffectsRD::screen_space_reflection(RID p_diffuse, RID p_normal, R
 		RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, ssr_scale.pipeline);
 
 		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_texture(p_diffuse), 0);
-		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_texture_pair(p_depth, p_normal), 1);
+		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_texture_pair(p_depth, p_normal_roughness), 1);
 		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_uniform_set_from_image(p_output_blur), 2);
 		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_image_pair(p_scale_depth, p_scale_normal), 3);
 
@@ -491,7 +497,7 @@ void RasterizerEffectsRD::screen_space_reflection(RID p_diffuse, RID p_normal, R
 
 		if (p_roughness_quality != RS::ENV_SSR_ROUGNESS_QUALITY_DISABLED) {
 			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_image_pair(p_output, p_blur_radius), 1);
-			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_texture_pair(p_metallic, p_roughness), 3);
+			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_texture_pair(p_metallic, p_normal_roughness), 3);
 		} else {
 			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_uniform_set_from_image(p_output), 1);
 			RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_texture(p_metallic), 3);
@@ -502,7 +508,7 @@ void RasterizerEffectsRD::screen_space_reflection(RID p_diffuse, RID p_normal, R
 	}
 
 	if (p_roughness_quality != RS::ENV_SSR_ROUGNESS_QUALITY_DISABLED) {
-		//blurr
+		//blur
 
 		RD::get_singleton()->compute_list_add_barrier(compute_list);
 
@@ -1165,7 +1171,7 @@ void RasterizerEffectsRD::cubemap_filter(RID p_source_cubemap, Vector<RID> p_des
 	RD::get_singleton()->compute_list_end();
 }
 
-void RasterizerEffectsRD::render_sky(RD::DrawListID p_list, float p_time, RID p_fb, RID p_samplers, RID p_lights, RenderPipelineVertexFormatCacheRD *p_pipeline, RID p_uniform_set, RID p_texture_set, const CameraMatrix &p_camera, const Basis &p_orientation, float p_multiplier, const Vector3 &p_position) {
+void RasterizerEffectsRD::render_sky(RD::DrawListID p_list, float p_time, RID p_fb, RID p_samplers, RID p_fog, RenderPipelineVertexFormatCacheRD *p_pipeline, RID p_uniform_set, RID p_texture_set, const CameraMatrix &p_camera, const Basis &p_orientation, float p_multiplier, const Vector3 &p_position) {
 	SkyPushConstant sky_push_constant;
 
 	zeromem(&sky_push_constant, sizeof(SkyPushConstant));
@@ -1192,13 +1198,149 @@ void RasterizerEffectsRD::render_sky(RD::DrawListID p_list, float p_time, RID p_
 		RD::get_singleton()->draw_list_bind_uniform_set(draw_list, p_uniform_set, 1);
 	}
 	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, p_texture_set, 2);
-	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, p_lights, 3);
+	RD::get_singleton()->draw_list_bind_uniform_set(draw_list, p_fog, 3);
 
 	RD::get_singleton()->draw_list_bind_index_array(draw_list, index_array);
 
 	RD::get_singleton()->draw_list_set_push_constant(draw_list, &sky_push_constant, sizeof(SkyPushConstant));
 
 	RD::get_singleton()->draw_list_draw(draw_list, true);
+}
+
+void RasterizerEffectsRD::resolve_gi(RID p_source_depth, RID p_source_normal_roughness, RID p_source_giprobe, RID p_dest_depth, RID p_dest_normal_roughness, RID p_dest_giprobe, Vector2i p_screen_size, int p_samples) {
+	ResolvePushConstant push_constant;
+	push_constant.screen_size[0] = p_screen_size.x;
+	push_constant.screen_size[1] = p_screen_size.y;
+	push_constant.samples = p_samples;
+
+	RD::ComputeListID compute_list = RD::get_singleton()->compute_list_begin();
+	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, resolve.pipelines[p_source_giprobe.is_valid() ? RESOLVE_MODE_GI_GIPROBE : RESOLVE_MODE_GI]);
+	RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_texture_pair(p_source_depth, p_source_normal_roughness), 0);
+	RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_image_pair(p_dest_depth, p_dest_normal_roughness), 1);
+	if (p_source_giprobe.is_valid()) {
+		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_texture(p_source_giprobe), 2);
+		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_uniform_set_from_image(p_dest_giprobe), 3);
+	}
+
+	RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(ResolvePushConstant));
+
+	RD::get_singleton()->compute_list_dispatch_threads(compute_list, p_screen_size.x, p_screen_size.y, 1, 8, 8, 1);
+
+	RD::get_singleton()->compute_list_end();
+}
+
+void RasterizerEffectsRD::reduce_shadow(RID p_source_shadow, RID p_dest_shadow, const Size2i &p_source_size, const Rect2i &p_source_rect, int p_shrink_limit, RD::ComputeListID compute_list) {
+	uint32_t push_constant[8] = { (uint32_t)p_source_size.x, (uint32_t)p_source_size.y, (uint32_t)p_source_rect.position.x, (uint32_t)p_source_rect.position.y, (uint32_t)p_shrink_limit, 0, 0, 0 };
+
+	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, shadow_reduce.pipelines[SHADOW_REDUCE_REDUCE]);
+	RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_image_pair(p_source_shadow, p_dest_shadow), 0);
+	RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(uint32_t) * 8);
+
+	RD::get_singleton()->compute_list_dispatch_threads(compute_list, p_source_rect.size.width, p_source_rect.size.height, 1, 8, 8, 1);
+}
+void RasterizerEffectsRD::filter_shadow(RID p_shadow, RID p_backing_shadow, const Size2i &p_source_size, const Rect2i &p_source_rect, RenderingServer::EnvVolumetricFogShadowFilter p_filter, RD::ComputeListID compute_list, bool p_vertical, bool p_horizontal) {
+	uint32_t push_constant[8] = { (uint32_t)p_source_size.x, (uint32_t)p_source_size.y, (uint32_t)p_source_rect.position.x, (uint32_t)p_source_rect.position.y, 0, 0, 0, 0 };
+
+	switch (p_filter) {
+		case RS::ENV_VOLUMETRIC_FOG_SHADOW_FILTER_DISABLED:
+		case RS::ENV_VOLUMETRIC_FOG_SHADOW_FILTER_LOW: {
+			push_constant[5] = 0;
+		} break;
+		case RS::ENV_VOLUMETRIC_FOG_SHADOW_FILTER_MEDIUM: {
+			push_constant[5] = 9;
+		} break;
+		case RS::ENV_VOLUMETRIC_FOG_SHADOW_FILTER_HIGH: {
+			push_constant[5] = 18;
+		} break;
+	}
+
+	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, shadow_reduce.pipelines[SHADOW_REDUCE_FILTER]);
+	if (p_vertical) {
+		push_constant[6] = 1;
+		push_constant[7] = 0;
+		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_image_pair(p_shadow, p_backing_shadow), 0);
+		RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(uint32_t) * 8);
+		RD::get_singleton()->compute_list_dispatch_threads(compute_list, p_source_rect.size.width, p_source_rect.size.height, 1, 8, 8, 1);
+	}
+	if (p_vertical && p_horizontal) {
+		RD::get_singleton()->compute_list_add_barrier(compute_list);
+	}
+	if (p_horizontal) {
+		push_constant[6] = 0;
+		push_constant[7] = 1;
+		RD::get_singleton()->compute_list_bind_uniform_set(compute_list, _get_compute_uniform_set_from_image_pair(p_backing_shadow, p_shadow), 0);
+		RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(uint32_t) * 8);
+		RD::get_singleton()->compute_list_dispatch_threads(compute_list, p_source_rect.size.width, p_source_rect.size.height, 1, 8, 8, 1);
+	}
+}
+
+void RasterizerEffectsRD::sort_buffer(RID p_uniform_set, int p_size) {
+	Sort::PushConstant push_constant;
+	push_constant.total_elements = p_size;
+
+	bool done = true;
+
+	int numThreadGroups = ((p_size - 1) >> 9) + 1;
+
+	if (numThreadGroups > 1) {
+		done = false;
+	}
+
+	RD::ComputeListID compute_list = RD::get_singleton()->compute_list_begin();
+
+	RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, sort.pipelines[SORT_MODE_BLOCK]);
+	RD::get_singleton()->compute_list_bind_uniform_set(compute_list, p_uniform_set, 1);
+	RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(Sort::PushConstant));
+	RD::get_singleton()->compute_list_dispatch(compute_list, numThreadGroups, 1, 1);
+
+	int presorted = 512;
+
+	while (!done) {
+		RD::get_singleton()->compute_list_add_barrier(compute_list);
+
+		done = true;
+		RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, sort.pipelines[SORT_MODE_STEP]);
+
+		numThreadGroups = 0;
+
+		if (p_size > presorted) {
+			if (p_size > presorted * 2) {
+				done = false;
+			}
+
+			int pow2 = presorted;
+			while (pow2 < p_size) {
+				pow2 *= 2;
+			}
+			numThreadGroups = pow2 >> 9;
+		}
+
+		unsigned int nMergeSize = presorted * 2;
+
+		for (unsigned int nMergeSubSize = nMergeSize >> 1; nMergeSubSize > 256; nMergeSubSize = nMergeSubSize >> 1) {
+			push_constant.job_params[0] = nMergeSubSize;
+			if (nMergeSubSize == nMergeSize >> 1) {
+				push_constant.job_params[1] = (2 * nMergeSubSize - 1);
+				push_constant.job_params[2] = -1;
+			} else {
+				push_constant.job_params[1] = nMergeSubSize;
+				push_constant.job_params[2] = 1;
+			}
+			push_constant.job_params[3] = 0;
+
+			RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(Sort::PushConstant));
+			RD::get_singleton()->compute_list_dispatch(compute_list, numThreadGroups, 1, 1);
+			RD::get_singleton()->compute_list_add_barrier(compute_list);
+		}
+
+		RD::get_singleton()->compute_list_bind_compute_pipeline(compute_list, sort.pipelines[SORT_MODE_INNER]);
+		RD::get_singleton()->compute_list_set_push_constant(compute_list, &push_constant, sizeof(Sort::PushConstant));
+		RD::get_singleton()->compute_list_dispatch(compute_list, numThreadGroups, 1, 1);
+
+		presorted *= 2;
+	}
+
+	RD::get_singleton()->compute_list_end();
 }
 
 RasterizerEffectsRD::RasterizerEffectsRD() {
@@ -1228,6 +1370,7 @@ RasterizerEffectsRD::RasterizerEffectsRD() {
 		Vector<String> copy_modes;
 		copy_modes.push_back("\n");
 		copy_modes.push_back("\n#define MODE_PANORAMA_TO_DP\n");
+		copy_modes.push_back("\n#define MODE_TWO_SOURCES\n");
 
 		copy_to_fb.shader.initialize(copy_modes);
 
@@ -1517,6 +1660,49 @@ RasterizerEffectsRD::RasterizerEffectsRD() {
 		}
 	}
 
+	{
+		Vector<String> resolve_modes;
+		resolve_modes.push_back("\n#define MODE_RESOLVE_GI\n");
+		resolve_modes.push_back("\n#define MODE_RESOLVE_GI\n#define GIPROBE_RESOLVE\n");
+
+		resolve.shader.initialize(resolve_modes);
+
+		resolve.shader_version = resolve.shader.version_create();
+
+		for (int i = 0; i < RESOLVE_MODE_MAX; i++) {
+			resolve.pipelines[i] = RD::get_singleton()->compute_pipeline_create(resolve.shader.version_get_shader(resolve.shader_version, i));
+		}
+	}
+
+	{
+		Vector<String> shadow_reduce_modes;
+		shadow_reduce_modes.push_back("\n#define MODE_REDUCE\n");
+		shadow_reduce_modes.push_back("\n#define MODE_FILTER\n");
+
+		shadow_reduce.shader.initialize(shadow_reduce_modes);
+
+		shadow_reduce.shader_version = shadow_reduce.shader.version_create();
+
+		for (int i = 0; i < SHADOW_REDUCE_MAX; i++) {
+			shadow_reduce.pipelines[i] = RD::get_singleton()->compute_pipeline_create(shadow_reduce.shader.version_get_shader(shadow_reduce.shader_version, i));
+		}
+	}
+
+	{
+		Vector<String> sort_modes;
+		sort_modes.push_back("\n#define MODE_SORT_BLOCK\n");
+		sort_modes.push_back("\n#define MODE_SORT_STEP\n");
+		sort_modes.push_back("\n#define MODE_SORT_INNER\n");
+
+		sort.shader.initialize(sort_modes);
+
+		sort.shader_version = sort.shader.version_create();
+
+		for (int i = 0; i < SORT_MODE_MAX; i++) {
+			sort.pipelines[i] = RD::get_singleton()->compute_pipeline_create(sort.shader.version_get_shader(sort.shader_version, i));
+		}
+	}
+
 	RD::SamplerState sampler;
 	sampler.mag_filter = RD::SAMPLER_FILTER_LINEAR;
 	sampler.min_filter = RD::SAMPLER_FILTER_LINEAR;
@@ -1569,6 +1755,7 @@ RasterizerEffectsRD::~RasterizerEffectsRD() {
 	cubemap_downsampler.shader.version_free(cubemap_downsampler.shader_version);
 	filter.shader.version_free(filter.shader_version);
 	luminance_reduce.shader.version_free(luminance_reduce.shader_version);
+	resolve.shader.version_free(resolve.shader_version);
 	roughness.shader.version_free(roughness.shader_version);
 	roughness_limiter.shader.version_free(roughness_limiter.shader_version);
 	specular_merge.shader.version_free(specular_merge.shader_version);
@@ -1580,4 +1767,5 @@ RasterizerEffectsRD::~RasterizerEffectsRD() {
 	ssr_scale.shader.version_free(ssr_scale.shader_version);
 	sss.shader.version_free(sss.shader_version);
 	tonemap.shader.version_free(tonemap.shader_version);
+	shadow_reduce.shader.version_free(shadow_reduce.shader_version);
 }

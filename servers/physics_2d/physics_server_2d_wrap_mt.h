@@ -287,8 +287,8 @@ public:
 	FUNC3(pin_joint_set_param, RID, PinJointParam, real_t);
 	FUNC2RC(real_t, pin_joint_get_param, RID, PinJointParam);
 
-	FUNC3(damped_string_joint_set_param, RID, DampedStringParam, real_t);
-	FUNC2RC(real_t, damped_string_joint_get_param, RID, DampedStringParam);
+	FUNC3(damped_spring_joint_set_param, RID, DampedSpringParam, real_t);
+	FUNC2RC(real_t, damped_spring_joint_get_param, RID, DampedSpringParam);
 
 	FUNC1RC(JointType, joint_get_type, RID);
 
@@ -317,6 +317,9 @@ public:
 
 	template <class T>
 	static PhysicsServer2D *init_server() {
+#ifdef NO_THREADS
+		return memnew(T); // Always single unsafe when no threads are available.
+#else
 		int tm = GLOBAL_DEF("physics/2d/thread_model", 1);
 		if (tm == 0) { // single unsafe
 			return memnew(T);
@@ -325,6 +328,7 @@ public:
 		} else { // multi threaded
 			return memnew(PhysicsServer2DWrapMT(memnew(T), true));
 		}
+#endif
 	}
 
 #undef ServerNameWrapMT

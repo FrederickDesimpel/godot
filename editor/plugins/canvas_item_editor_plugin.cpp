@@ -54,8 +54,10 @@
 #include "scene/main/window.h"
 #include "scene/resources/packed_scene.h"
 
-#define MIN_ZOOM 0.01
-#define MAX_ZOOM 100
+// Min and Max are power of two in order to play nicely with successive increment.
+// That way, we can naturally reach a 100% zoom from boundaries.
+#define MIN_ZOOM 1. / 128
+#define MAX_ZOOM 128
 
 #define RULER_WIDTH (15 * EDSCALE)
 #define SCALE_HANDLE_DISTANCE 25
@@ -87,7 +89,6 @@ public:
 		GridContainer *child_container;
 
 		set_title(TTR("Configure Snap"));
-		get_ok()->set_text(TTR("Close"));
 
 		container = memnew(VBoxContainer);
 		add_child(container);
@@ -1206,7 +1207,26 @@ bool CanvasItemEditor::_gui_input_rulers_and_guides(const Ref<InputEvent> &p_eve
 bool CanvasItemEditor::_gui_input_zoom_or_pan(const Ref<InputEvent> &p_event, bool p_already_accepted) {
 	Ref<InputEventMouseButton> b = p_event;
 	if (b.is_valid() && !p_already_accepted) {
-		bool pan_on_scroll = bool(EditorSettings::get_singleton()->get("editors/2d/scroll_to_pan")) && !b->get_control();
+		const bool pan_on_scroll = bool(EditorSettings::get_singleton()->get("editors/2d/scroll_to_pan")) && !b->get_control();
+
+		if (pan_on_scroll) {
+			// Perform horizontal scrolling first so we can check for Shift being held.
+			if (b->is_pressed() &&
+					(b->get_button_index() == BUTTON_WHEEL_LEFT || (b->get_shift() && b->get_button_index() == BUTTON_WHEEL_UP))) {
+				// Pan left
+				view_offset.x -= int(EditorSettings::get_singleton()->get("editors/2d/pan_speed")) / zoom * b->get_factor();
+				update_viewport();
+				return true;
+			}
+
+			if (b->is_pressed() &&
+					(b->get_button_index() == BUTTON_WHEEL_RIGHT || (b->get_shift() && b->get_button_index() == BUTTON_WHEEL_DOWN))) {
+				// Pan right
+				view_offset.x += int(EditorSettings::get_singleton()->get("editors/2d/pan_speed")) / zoom * b->get_factor();
+				update_viewport();
+				return true;
+			}
+		}
 
 		if (b->is_pressed() && b->get_button_index() == BUTTON_WHEEL_DOWN) {
 			// Scroll or pan down
@@ -1214,7 +1234,11 @@ bool CanvasItemEditor::_gui_input_zoom_or_pan(const Ref<InputEvent> &p_event, bo
 				view_offset.y += int(EditorSettings::get_singleton()->get("editors/2d/pan_speed")) / zoom * b->get_factor();
 				update_viewport();
 			} else {
-				_zoom_on_position(zoom * (1 - (0.05 * b->get_factor())), b->get_position());
+				float new_zoom = _get_next_zoom_value(-1);
+				if (b->get_factor() != 1.f) {
+					new_zoom = zoom * ((new_zoom / zoom - 1.f) * b->get_factor() + 1.f);
+				}
+				_zoom_on_position(new_zoom, b->get_position());
 			}
 			return true;
 		}
@@ -1225,27 +1249,13 @@ bool CanvasItemEditor::_gui_input_zoom_or_pan(const Ref<InputEvent> &p_event, bo
 				view_offset.y -= int(EditorSettings::get_singleton()->get("editors/2d/pan_speed")) / zoom * b->get_factor();
 				update_viewport();
 			} else {
-				_zoom_on_position(zoom * ((0.95 + (0.05 * b->get_factor())) / 0.95), b->get_position());
+				float new_zoom = _get_next_zoom_value(1);
+				if (b->get_factor() != 1.f) {
+					new_zoom = zoom * ((new_zoom / zoom - 1.f) * b->get_factor() + 1.f);
+				}
+				_zoom_on_position(new_zoom, b->get_position());
 			}
 			return true;
-		}
-
-		if (b->is_pressed() && b->get_button_index() == BUTTON_WHEEL_LEFT) {
-			// Pan left
-			if (pan_on_scroll) {
-				view_offset.x -= int(EditorSettings::get_singleton()->get("editors/2d/pan_speed")) / zoom * b->get_factor();
-				update_viewport();
-				return true;
-			}
-		}
-
-		if (b->is_pressed() && b->get_button_index() == BUTTON_WHEEL_RIGHT) {
-			// Pan right
-			if (pan_on_scroll) {
-				view_offset.x += int(EditorSettings::get_singleton()->get("editors/2d/pan_speed")) / zoom * b->get_factor();
-				update_viewport();
-				return true;
-			}
 		}
 
 		if (!panning) {
@@ -1316,6 +1326,18 @@ bool CanvasItemEditor::_gui_input_zoom_or_pan(const Ref<InputEvent> &p_event, bo
 
 	Ref<InputEventPanGesture> pan_gesture = p_event;
 	if (pan_gesture.is_valid() && !p_already_accepted) {
+		// If control key pressed, then zoom instead of pan
+		if (pan_gesture->get_control()) {
+			const float factor = pan_gesture->get_delta().y;
+			float new_zoom = _get_next_zoom_value(-1);
+
+			if (factor != 1.f) {
+				new_zoom = zoom * ((new_zoom / zoom - 1.f) * factor + 1.f);
+			}
+			_zoom_on_position(new_zoom, pan_gesture->get_position());
+			return true;
+		}
+
 		// Pan gesture
 		const Vector2 delta = (int(EditorSettings::get_singleton()->get("editors/2d/pan_speed")) / zoom) * pan_gesture->get_delta();
 		view_offset.x += delta.x;
@@ -2023,10 +2045,10 @@ bool CanvasItemEditor::_gui_input_move(const Ref<InputEvent> &p_event) {
 			if ((b->get_alt() && !b->get_control()) || tool == TOOL_MOVE) {
 				List<CanvasItem *> selection = _get_edited_canvas_items();
 
-				// Remove not movable nodes
+				drag_selection.clear();
 				for (int i = 0; i < selection.size(); i++) {
-					if (!_is_node_movable(selection[i], true)) {
-						selection.erase(selection[i]);
+					if (_is_node_movable(selection[i], true)) {
+						drag_selection.push_back(selection[i]);
 					}
 				}
 
@@ -2051,7 +2073,6 @@ bool CanvasItemEditor::_gui_input_move(const Ref<InputEvent> &p_event) {
 					}
 
 					drag_from = transform.affine_inverse().xform(b->get_position());
-					drag_selection = selection;
 					_save_canvas_item_state(drag_selection);
 				}
 				return true;
@@ -2373,16 +2394,15 @@ bool CanvasItemEditor::_gui_input_select(const Ref<InputEvent> &p_event) {
 					// Drag the node(s) if requested
 					List<CanvasItem *> selection2 = _get_edited_canvas_items();
 
-					// Remove not movable nodes
+					drag_selection.clear();
 					for (int i = 0; i < selection2.size(); i++) {
-						if (!_is_node_movable(selection2[i], true)) {
-							selection2.erase(selection2[i]);
+						if (_is_node_movable(selection2[i], true)) {
+							drag_selection.push_back(selection2[i]);
 						}
 					}
 
 					if (selection2.size() > 0) {
 						drag_type = DRAG_MOVE;
-						drag_selection = selection2;
 						drag_from = click;
 						_save_canvas_item_state(drag_selection);
 					}
@@ -2569,7 +2589,21 @@ void CanvasItemEditor::_gui_input_viewport(const Ref<InputEvent> &p_event) {
 	_gui_input_hover(p_event);
 
 	// Change the cursor
+	_update_cursor();
+
+	// Grab focus
+	if (!viewport->has_focus() && (!get_focus_owner() || !get_focus_owner()->is_text_field())) {
+		viewport->call_deferred("grab_focus");
+	}
+}
+
+void CanvasItemEditor::_update_cursor() {
 	CursorShape c = CURSOR_ARROW;
+	bool should_switch = false;
+	if (drag_selection.size() != 0) {
+		float angle = drag_selection[0]->_edit_get_rotation();
+		should_switch = abs(Math::cos(angle)) < Math_SQRT12;
+	}
 	switch (drag_type) {
 		case DRAG_NONE:
 			switch (tool) {
@@ -2592,21 +2626,37 @@ void CanvasItemEditor::_gui_input_viewport(const Ref<InputEvent> &p_event) {
 		case DRAG_LEFT:
 		case DRAG_RIGHT:
 		case DRAG_V_GUIDE:
-			c = CURSOR_HSIZE;
+			if (should_switch) {
+				c = CURSOR_VSIZE;
+			} else {
+				c = CURSOR_HSIZE;
+			}
 			break;
 		case DRAG_TOP:
 		case DRAG_BOTTOM:
 		case DRAG_H_GUIDE:
-			c = CURSOR_VSIZE;
+			if (should_switch) {
+				c = CURSOR_HSIZE;
+			} else {
+				c = CURSOR_VSIZE;
+			}
 			break;
 		case DRAG_TOP_LEFT:
 		case DRAG_BOTTOM_RIGHT:
 		case DRAG_DOUBLE_GUIDE:
-			c = CURSOR_FDIAGSIZE;
+			if (should_switch) {
+				c = CURSOR_BDIAGSIZE;
+			} else {
+				c = CURSOR_FDIAGSIZE;
+			}
 			break;
 		case DRAG_TOP_RIGHT:
 		case DRAG_BOTTOM_LEFT:
-			c = CURSOR_BDIAGSIZE;
+			if (should_switch) {
+				c = CURSOR_FDIAGSIZE;
+			} else {
+				c = CURSOR_BDIAGSIZE;
+			}
 			break;
 		case DRAG_MOVE:
 			c = CURSOR_MOVE;
@@ -2622,11 +2672,6 @@ void CanvasItemEditor::_gui_input_viewport(const Ref<InputEvent> &p_event) {
 	}
 
 	viewport->set_default_cursor_shape(c);
-
-	// Grab focus
-	if (!viewport->has_focus() && (!get_focus_owner() || !get_focus_owner()->is_text_field())) {
-		viewport->call_deferred("grab_focus");
-	}
 }
 
 void CanvasItemEditor::_draw_text_at_position(Point2 p_position, String p_string, Margin p_side) {
@@ -3960,7 +4005,7 @@ void CanvasItemEditor::_notification(int p_what) {
 		rotate_button->set_icon(get_theme_icon("ToolRotate", "EditorIcons"));
 		smart_snap_button->set_icon(get_theme_icon("Snap", "EditorIcons"));
 		grid_snap_button->set_icon(get_theme_icon("SnapGrid", "EditorIcons"));
-		snap_config_menu->set_icon(get_theme_icon("GuiTabMenu", "EditorIcons"));
+		snap_config_menu->set_icon(get_theme_icon("GuiTabMenuHl", "EditorIcons"));
 		skeleton_menu->set_icon(get_theme_icon("Bone", "EditorIcons"));
 		override_camera_button->set_icon(get_theme_icon("Camera2D", "EditorIcons"));
 		pan_button->set_icon(get_theme_icon("ToolPan", "EditorIcons"));
@@ -3977,7 +4022,7 @@ void CanvasItemEditor::_notification(int p_what) {
 		key_scale_button->set_icon(get_theme_icon("KeyScale", "EditorIcons"));
 		key_insert_button->set_icon(get_theme_icon("Key", "EditorIcons"));
 		key_auto_insert_button->set_icon(get_theme_icon("AutoKey", "EditorIcons"));
-		animation_menu->set_icon(get_theme_icon("GuiTabMenu", "EditorIcons"));
+		animation_menu->set_icon(get_theme_icon("GuiTabMenuHl", "EditorIcons"));
 
 		zoom_minus->set_icon(get_theme_icon("ZoomLess", "EditorIcons"));
 		zoom_plus->set_icon(get_theme_icon("ZoomMore", "EditorIcons"));
@@ -4334,8 +4379,37 @@ void CanvasItemEditor::_set_anchors_preset(Control::LayoutPreset p_preset) {
 	undo_redo->commit_action();
 }
 
+float CanvasItemEditor::_get_next_zoom_value(int p_increment_count) const {
+	// Base increment factor defined as the twelveth root of two.
+	// This allow a smooth geometric evolution of the zoom, with the advantage of
+	// visiting all integer power of two scale factors.
+	// note: this is analogous to the 'semitones' interval in the music world
+	// In order to avoid numerical imprecisions, we compute and edit a zoom index
+	// with the following relation: zoom = 2 ^ (index / 12)
+
+	if (zoom < CMP_EPSILON || p_increment_count == 0) {
+		return 1.f;
+	}
+
+	// Remove Editor scale from the index computation
+	float zoom_noscale = zoom / MAX(1, EDSCALE);
+
+	// zoom = 2**(index/12) => log2(zoom) = index/12
+	float closest_zoom_index = Math::round(Math::log(zoom_noscale) * 12.f / Math::log(2.f));
+
+	float new_zoom_index = closest_zoom_index + p_increment_count;
+	float new_zoom = Math::pow(2.f, new_zoom_index / 12.f);
+
+	// Restore Editor scale transformation
+	new_zoom *= MAX(1, EDSCALE);
+
+	return new_zoom;
+}
+
 void CanvasItemEditor::_zoom_on_position(float p_zoom, Point2 p_position) {
-	if (p_zoom < MIN_ZOOM || p_zoom > MAX_ZOOM) {
+	p_zoom = CLAMP(p_zoom, MIN_ZOOM, MAX_ZOOM);
+
+	if (p_zoom == zoom) {
 		return;
 	}
 
@@ -4377,7 +4451,7 @@ void CanvasItemEditor::_update_zoom_label() {
 }
 
 void CanvasItemEditor::_button_zoom_minus() {
-	_zoom_on_position(zoom / Math_SQRT2, viewport_scrollable->get_size() / 2.0);
+	_zoom_on_position(_get_next_zoom_value(-6), viewport_scrollable->get_size() / 2.0);
 }
 
 void CanvasItemEditor::_button_zoom_reset() {
@@ -4385,7 +4459,7 @@ void CanvasItemEditor::_button_zoom_reset() {
 }
 
 void CanvasItemEditor::_button_zoom_plus() {
-	_zoom_on_position(zoom * Math_SQRT2, viewport_scrollable->get_size() / 2.0);
+	_zoom_on_position(_get_next_zoom_value(6), viewport_scrollable->get_size() / 2.0);
 }
 
 void CanvasItemEditor::_button_toggle_smart_snap(bool p_status) {
@@ -4409,13 +4483,19 @@ void CanvasItemEditor::_button_override_camera(bool p_pressed) {
 }
 
 void CanvasItemEditor::_button_tool_select(int p_index) {
-	ToolButton *tb[TOOL_MAX] = { select_button, list_select_button, move_button, scale_button, rotate_button, pivot_button, pan_button, ruler_button };
+	Button *tb[TOOL_MAX] = { select_button, list_select_button, move_button, scale_button, rotate_button, pivot_button, pan_button, ruler_button };
 	for (int i = 0; i < TOOL_MAX; i++) {
 		tb[i]->set_pressed(i == p_index);
 	}
 
 	tool = (Tool)p_index;
+
 	viewport->update();
+	_update_cursor();
+
+	// Request immediate refresh of cursor when using hot-keys to switch between tools
+	DisplayServer::CursorShape ds_cursor_shape = (DisplayServer::CursorShape)viewport->get_default_cursor_shape();
+	DisplayServer::get_singleton()->cursor_set_shape(ds_cursor_shape);
 }
 
 void CanvasItemEditor::_insert_animation_keys(bool p_location, bool p_rotation, bool p_scale, bool p_on_existing) {
@@ -5539,13 +5619,15 @@ CanvasItemEditor::CanvasItemEditor(EditorNode *p_editor) {
 
 	viewport->add_child(controls_vb);
 
-	zoom_minus = memnew(ToolButton);
+	zoom_minus = memnew(Button);
+	zoom_minus->set_flat(true);
 	zoom_hb->add_child(zoom_minus);
 	zoom_minus->connect("pressed", callable_mp(this, &CanvasItemEditor::_button_zoom_minus));
 	zoom_minus->set_shortcut(ED_SHORTCUT("canvas_item_editor/zoom_minus", TTR("Zoom Out"), KEY_MASK_CMD | KEY_MINUS));
 	zoom_minus->set_focus_mode(FOCUS_NONE);
 
-	zoom_reset = memnew(ToolButton);
+	zoom_reset = memnew(Button);
+	zoom_reset->set_flat(true);
 	zoom_hb->add_child(zoom_reset);
 	zoom_reset->connect("pressed", callable_mp(this, &CanvasItemEditor::_button_zoom_reset));
 	zoom_reset->set_shortcut(ED_SHORTCUT("canvas_item_editor/zoom_reset", TTR("Zoom Reset"), KEY_MASK_CMD | KEY_0));
@@ -5554,7 +5636,8 @@ CanvasItemEditor::CanvasItemEditor(EditorNode *p_editor) {
 	// Prevent the button's size from changing when the text size changes
 	zoom_reset->set_custom_minimum_size(Size2(75 * EDSCALE, 0));
 
-	zoom_plus = memnew(ToolButton);
+	zoom_plus = memnew(Button);
+	zoom_plus->set_flat(true);
 	zoom_hb->add_child(zoom_plus);
 	zoom_plus->connect("pressed", callable_mp(this, &CanvasItemEditor::_button_zoom_plus));
 	zoom_plus->set_shortcut(ED_SHORTCUT("canvas_item_editor/zoom_plus", TTR("Zoom In"), KEY_MASK_CMD | KEY_EQUAL)); // Usually direct access key for PLUS
@@ -5562,7 +5645,8 @@ CanvasItemEditor::CanvasItemEditor(EditorNode *p_editor) {
 
 	updating_scroll = false;
 
-	select_button = memnew(ToolButton);
+	select_button = memnew(Button);
+	select_button->set_flat(true);
 	hb->add_child(select_button);
 	select_button->set_toggle_mode(true);
 	select_button->connect("pressed", callable_mp(this, &CanvasItemEditor::_button_tool_select), make_binds(TOOL_SELECT));
@@ -5572,21 +5656,24 @@ CanvasItemEditor::CanvasItemEditor(EditorNode *p_editor) {
 
 	hb->add_child(memnew(VSeparator));
 
-	move_button = memnew(ToolButton);
+	move_button = memnew(Button);
+	move_button->set_flat(true);
 	hb->add_child(move_button);
 	move_button->set_toggle_mode(true);
 	move_button->connect("pressed", callable_mp(this, &CanvasItemEditor::_button_tool_select), make_binds(TOOL_MOVE));
 	move_button->set_shortcut(ED_SHORTCUT("canvas_item_editor/move_mode", TTR("Move Mode"), KEY_W));
 	move_button->set_tooltip(TTR("Move Mode"));
 
-	rotate_button = memnew(ToolButton);
+	rotate_button = memnew(Button);
+	rotate_button->set_flat(true);
 	hb->add_child(rotate_button);
 	rotate_button->set_toggle_mode(true);
 	rotate_button->connect("pressed", callable_mp(this, &CanvasItemEditor::_button_tool_select), make_binds(TOOL_ROTATE));
 	rotate_button->set_shortcut(ED_SHORTCUT("canvas_item_editor/rotate_mode", TTR("Rotate Mode"), KEY_E));
 	rotate_button->set_tooltip(TTR("Rotate Mode"));
 
-	scale_button = memnew(ToolButton);
+	scale_button = memnew(Button);
+	scale_button->set_flat(true);
 	hb->add_child(scale_button);
 	scale_button->set_toggle_mode(true);
 	scale_button->connect("pressed", callable_mp(this, &CanvasItemEditor::_button_tool_select), make_binds(TOOL_SCALE));
@@ -5595,26 +5682,30 @@ CanvasItemEditor::CanvasItemEditor(EditorNode *p_editor) {
 
 	hb->add_child(memnew(VSeparator));
 
-	list_select_button = memnew(ToolButton);
+	list_select_button = memnew(Button);
+	list_select_button->set_flat(true);
 	hb->add_child(list_select_button);
 	list_select_button->set_toggle_mode(true);
 	list_select_button->connect("pressed", callable_mp(this, &CanvasItemEditor::_button_tool_select), make_binds(TOOL_LIST_SELECT));
 	list_select_button->set_tooltip(TTR("Show a list of all objects at the position clicked\n(same as Alt+RMB in select mode)."));
 
-	pivot_button = memnew(ToolButton);
+	pivot_button = memnew(Button);
+	pivot_button->set_flat(true);
 	hb->add_child(pivot_button);
 	pivot_button->set_toggle_mode(true);
 	pivot_button->connect("pressed", callable_mp(this, &CanvasItemEditor::_button_tool_select), make_binds(TOOL_EDIT_PIVOT));
 	pivot_button->set_tooltip(TTR("Click to change object's rotation pivot."));
 
-	pan_button = memnew(ToolButton);
+	pan_button = memnew(Button);
+	pan_button->set_flat(true);
 	hb->add_child(pan_button);
 	pan_button->set_toggle_mode(true);
 	pan_button->connect("pressed", callable_mp(this, &CanvasItemEditor::_button_tool_select), make_binds(TOOL_PAN));
 	pan_button->set_shortcut(ED_SHORTCUT("canvas_item_editor/pan_mode", TTR("Pan Mode"), KEY_G));
 	pan_button->set_tooltip(TTR("Pan Mode"));
 
-	ruler_button = memnew(ToolButton);
+	ruler_button = memnew(Button);
+	ruler_button->set_flat(true);
 	hb->add_child(ruler_button);
 	ruler_button->set_toggle_mode(true);
 	ruler_button->connect("pressed", callable_mp(this, &CanvasItemEditor::_button_tool_select), make_binds(TOOL_RULER));
@@ -5623,14 +5714,16 @@ CanvasItemEditor::CanvasItemEditor(EditorNode *p_editor) {
 
 	hb->add_child(memnew(VSeparator));
 
-	smart_snap_button = memnew(ToolButton);
+	smart_snap_button = memnew(Button);
+	smart_snap_button->set_flat(true);
 	hb->add_child(smart_snap_button);
 	smart_snap_button->set_toggle_mode(true);
 	smart_snap_button->connect("toggled", callable_mp(this, &CanvasItemEditor::_button_toggle_smart_snap));
 	smart_snap_button->set_tooltip(TTR("Toggle smart snapping."));
 	smart_snap_button->set_shortcut(ED_SHORTCUT("canvas_item_editor/use_smart_snap", TTR("Use Smart Snap"), KEY_MASK_SHIFT | KEY_S));
 
-	grid_snap_button = memnew(ToolButton);
+	grid_snap_button = memnew(Button);
+	grid_snap_button->set_flat(true);
 	hb->add_child(grid_snap_button);
 	grid_snap_button->set_toggle_mode(true);
 	grid_snap_button->connect("toggled", callable_mp(this, &CanvasItemEditor::_button_toggle_grid_snap));
@@ -5669,23 +5762,27 @@ CanvasItemEditor::CanvasItemEditor(EditorNode *p_editor) {
 
 	hb->add_child(memnew(VSeparator));
 
-	lock_button = memnew(ToolButton);
+	lock_button = memnew(Button);
+	lock_button->set_flat(true);
 	hb->add_child(lock_button);
 
 	lock_button->connect("pressed", callable_mp(this, &CanvasItemEditor::_popup_callback), varray(LOCK_SELECTED));
 	lock_button->set_tooltip(TTR("Lock the selected object in place (can't be moved)."));
 
-	unlock_button = memnew(ToolButton);
+	unlock_button = memnew(Button);
+	unlock_button->set_flat(true);
 	hb->add_child(unlock_button);
 	unlock_button->connect("pressed", callable_mp(this, &CanvasItemEditor::_popup_callback), varray(UNLOCK_SELECTED));
 	unlock_button->set_tooltip(TTR("Unlock the selected object (can be moved)."));
 
-	group_button = memnew(ToolButton);
+	group_button = memnew(Button);
+	group_button->set_flat(true);
 	hb->add_child(group_button);
 	group_button->connect("pressed", callable_mp(this, &CanvasItemEditor::_popup_callback), varray(GROUP_SELECTED));
 	group_button->set_tooltip(TTR("Makes sure the object's children are not selectable."));
 
-	ungroup_button = memnew(ToolButton);
+	ungroup_button = memnew(Button);
+	ungroup_button->set_flat(true);
 	hb->add_child(ungroup_button);
 	ungroup_button->connect("pressed", callable_mp(this, &CanvasItemEditor::_popup_callback), varray(UNGROUP_SELECTED));
 	ungroup_button->set_tooltip(TTR("Restores the object's children's ability to be selected."));
@@ -5710,7 +5807,8 @@ CanvasItemEditor::CanvasItemEditor(EditorNode *p_editor) {
 
 	hb->add_child(memnew(VSeparator));
 
-	override_camera_button = memnew(ToolButton);
+	override_camera_button = memnew(Button);
+	override_camera_button->set_flat(true);
 	hb->add_child(override_camera_button);
 	override_camera_button->connect("toggled", callable_mp(this, &CanvasItemEditor::_button_override_camera));
 	override_camera_button->set_toggle_mode(true);
@@ -5757,7 +5855,8 @@ CanvasItemEditor::CanvasItemEditor(EditorNode *p_editor) {
 	anchors_popup->set_name("Anchors");
 	anchors_popup->connect("id_pressed", callable_mp(this, &CanvasItemEditor::_popup_callback));
 
-	anchor_mode_button = memnew(ToolButton);
+	anchor_mode_button = memnew(Button);
+	anchor_mode_button->set_flat(true);
 	hb->add_child(anchor_mode_button);
 	anchor_mode_button->set_toggle_mode(true);
 	anchor_mode_button->hide();
@@ -6079,6 +6178,11 @@ bool CanvasItemEditorViewport::_create_instance(Node *parent, String &path, cons
 		Vector2 target_pos = canvas_item_editor->get_canvas_transform().affine_inverse().xform(p_point);
 		target_pos = canvas_item_editor->snap_point(target_pos);
 		target_pos = parent_ci->get_global_transform_with_canvas().affine_inverse().xform(target_pos);
+		// Preserve instance position of the original scene.
+		CanvasItem *instance_ci = Object::cast_to<CanvasItem>(instanced_scene);
+		if (instance_ci) {
+			target_pos += instance_ci->_edit_get_position();
+		}
 		editor_data->get_undo_redo().add_do_method(instanced_scene, "set_position", target_pos);
 	}
 
@@ -6152,7 +6256,7 @@ void CanvasItemEditorViewport::_perform_drop_data() {
 			files_str += error_files[i].get_file().get_basename() + ",";
 		}
 		files_str = files_str.substr(0, files_str.length() - 1);
-		accept->set_text(vformat(TTR("Error instancing scene from %s"), files_str.c_str()));
+		accept->set_text(vformat(TTR("Error instancing scene from %s"), files_str.get_data()));
 		accept->popup_centered();
 	}
 }
@@ -6321,7 +6425,7 @@ CanvasItemEditorViewport::CanvasItemEditorViewport(EditorNode *p_node, CanvasIte
 	selector->add_child(vbc);
 	vbc->set_h_size_flags(Control::SIZE_EXPAND_FILL);
 	vbc->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-	vbc->set_custom_minimum_size(Size2(200, 260) * EDSCALE);
+	vbc->set_custom_minimum_size(Size2(240, 260) * EDSCALE);
 
 	btn_group = memnew(VBoxContainer);
 	vbc->add_child(btn_group);

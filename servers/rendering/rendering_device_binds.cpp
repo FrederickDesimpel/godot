@@ -103,7 +103,7 @@ Error RDShaderFile::parse_versions_from_text(const String &p_text, const String 
 					base_error = "Missing `=` in '" + l + "'. Version syntax is `version = \"<defines with C escaping>\";`.";
 					break;
 				}
-				if (l.find(";") != -1) {
+				if (l.find(";") == -1) {
 					// We don't require a semicolon per se, but it's needed for clang-format to handle things properly.
 					base_error = "Missing `;` in '" + l + "'. Version syntax is `version = \"<defines with C escaping>\";`.";
 					break;
@@ -135,7 +135,7 @@ Error RDShaderFile::parse_versions_from_text(const String &p_text, const String 
 						//process include
 						String include = line.replace("#include", "").strip_edges();
 						if (!include.begins_with("\"") || !include.ends_with("\"")) {
-							base_error = "Malformed #include syntax, expected #include \"<path>\", found instad: " + include;
+							base_error = "Malformed #include syntax, expected #include \"<path>\", found instead: " + include;
 							break;
 						}
 						include = include.substr(1, include.length() - 2).strip_edges();

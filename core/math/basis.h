@@ -36,7 +36,11 @@
 
 class Basis {
 public:
-	Vector3 elements[3];
+	Vector3 elements[3] = {
+		Vector3(1, 0, 0),
+		Vector3(0, 1, 0),
+		Vector3(0, 0, 1)
+	};
 
 	_FORCE_INLINE_ const Vector3 &operator[](int axis) const {
 		return elements[axis];
@@ -88,8 +92,21 @@ public:
 
 	Vector3 get_euler_xyz() const;
 	void set_euler_xyz(const Vector3 &p_euler);
+
+	Vector3 get_euler_xzy() const;
+	void set_euler_xzy(const Vector3 &p_euler);
+
+	Vector3 get_euler_yzx() const;
+	void set_euler_yzx(const Vector3 &p_euler);
+
 	Vector3 get_euler_yxz() const;
 	void set_euler_yxz(const Vector3 &p_euler);
+
+	Vector3 get_euler_zxy() const;
+	void set_euler_zxy(const Vector3 &p_euler);
+
+	Vector3 get_euler_zyx() const;
+	void set_euler_zyx(const Vector3 &p_euler);
 
 	Quat get_quat() const;
 	void set_quat(const Quat &p_quat);
@@ -129,9 +146,6 @@ public:
 	}
 
 	bool is_equal_approx(const Basis &p_basis) const;
-	// TODO: Break compatibility in 4.0 by getting rid of this so that it's only an instance method. See also TODO in variant_call.cpp
-	bool is_equal_approx(const Basis &a, const Basis &b) const { return a.is_equal_approx(b); }
-	bool is_equal_approx_ratio(const Basis &a, const Basis &b, real_t p_epsilon = UNIT_EPSILON) const;
 
 	bool operator==(const Basis &p_matrix) const;
 	bool operator!=(const Basis &p_matrix) const;
@@ -221,7 +235,9 @@ public:
 	void orthonormalize();
 	Basis orthonormalized() const;
 
+#ifdef MATH_CHECKS
 	bool is_symmetric() const;
+#endif
 	Basis diagonalize();
 
 	operator Quat() const { return get_quat(); }
@@ -241,17 +257,7 @@ public:
 		elements[2] = row2;
 	}
 
-	_FORCE_INLINE_ Basis() {
-		elements[0][0] = 1;
-		elements[0][1] = 0;
-		elements[0][2] = 0;
-		elements[1][0] = 0;
-		elements[1][1] = 1;
-		elements[1][2] = 0;
-		elements[2][0] = 0;
-		elements[2][1] = 0;
-		elements[2][2] = 1;
-	}
+	_FORCE_INLINE_ Basis() {}
 };
 
 _FORCE_INLINE_ void Basis::operator*=(const Basis &p_matrix) {

@@ -287,7 +287,7 @@ bool AbstractPolygon2DEditor::forward_gui_input(const Ref<InputEvent> &p_event) 
 							pre_move_edit = vertices2;
 							edited_point = PosVertex(insert.polygon, insert.vertex + 1, xform.affine_inverse().xform(insert.pos));
 							vertices2.insert(edited_point.vertex, edited_point.pos);
-							selected_point = edited_point;
+							selected_point = Vertex(edited_point.polygon, edited_point.vertex);
 							edge_point = PosVertex();
 
 							undo_redo->create_action(TTR("Insert Point"));
@@ -369,7 +369,7 @@ bool AbstractPolygon2DEditor::forward_gui_input(const Ref<InputEvent> &p_event) 
 				} else {
 					const real_t grab_threshold = EDITOR_GET("editors/poly_editor/point_grab_radius");
 
-					if (!_is_line() && wip.size() > 1 && xform.xform(wip[0]).distance_to(gpoint) < grab_threshold) {
+					if (!_is_line() && wip.size() > 1 && xform.xform(wip[0]).distance_to(xform.xform(cpoint)) < grab_threshold) {
 						//wip closed
 						_wip_close();
 
@@ -703,17 +703,20 @@ AbstractPolygon2DEditor::AbstractPolygon2DEditor(EditorNode *p_editor, bool p_wi
 	edge_point = PosVertex();
 
 	add_child(memnew(VSeparator));
-	button_create = memnew(ToolButton);
+	button_create = memnew(Button);
+	button_create->set_flat(true);
 	add_child(button_create);
 	button_create->connect("pressed", callable_mp(this, &AbstractPolygon2DEditor::_menu_option), varray(MODE_CREATE));
 	button_create->set_toggle_mode(true);
 
-	button_edit = memnew(ToolButton);
+	button_edit = memnew(Button);
+	button_edit->set_flat(true);
 	add_child(button_edit);
 	button_edit->connect("pressed", callable_mp(this, &AbstractPolygon2DEditor::_menu_option), varray(MODE_EDIT));
 	button_edit->set_toggle_mode(true);
 
-	button_delete = memnew(ToolButton);
+	button_delete = memnew(Button);
+	button_delete->set_flat(true);
 	add_child(button_delete);
 	button_delete->connect("pressed", callable_mp(this, &AbstractPolygon2DEditor::_menu_option), varray(MODE_DELETE));
 	button_delete->set_toggle_mode(true);

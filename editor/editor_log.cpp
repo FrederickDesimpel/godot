@@ -79,7 +79,15 @@ void EditorLog::_clear_request() {
 }
 
 void EditorLog::_copy_request() {
-	log->selection_copy();
+	String text = log->get_selected_text();
+
+	if (text == "") {
+		text = log->get_text();
+	}
+
+	if (text != "") {
+		DisplayServer::get_singleton()->clipboard_set(text);
+	}
 }
 
 void EditorLog::clear() {
@@ -124,7 +132,7 @@ void EditorLog::add_message(const String &p_msg, MessageType p_type) {
 	}
 }
 
-void EditorLog::set_tool_button(ToolButton *p_tool_button) {
+void EditorLog::set_tool_button(Button *p_tool_button) {
 	tool_button = p_tool_button;
 }
 

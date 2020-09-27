@@ -821,15 +821,16 @@ void PhysicsServer2DSW::body_apply_torque_impulse(RID p_body, real_t p_torque) {
 	_update_shapes();
 
 	body->apply_torque_impulse(p_torque);
+	body->wakeup();
 }
 
-void PhysicsServer2DSW::body_apply_impulse(RID p_body, const Vector2 &p_pos, const Vector2 &p_impulse) {
+void PhysicsServer2DSW::body_apply_impulse(RID p_body, const Vector2 &p_impulse, const Vector2 &p_position) {
 	Body2DSW *body = body_owner.getornull(p_body);
 	ERR_FAIL_COND(!body);
 
 	_update_shapes();
 
-	body->apply_impulse(p_pos, p_impulse);
+	body->apply_impulse(p_impulse, p_position);
 	body->wakeup();
 };
 
@@ -841,11 +842,11 @@ void PhysicsServer2DSW::body_add_central_force(RID p_body, const Vector2 &p_forc
 	body->wakeup();
 };
 
-void PhysicsServer2DSW::body_add_force(RID p_body, const Vector2 &p_offset, const Vector2 &p_force) {
+void PhysicsServer2DSW::body_add_force(RID p_body, const Vector2 &p_force, const Vector2 &p_position) {
 	Body2DSW *body = body_owner.getornull(p_body);
 	ERR_FAIL_COND(!body);
 
-	body->add_force(p_offset, p_force);
+	body->add_force(p_force, p_position);
 	body->wakeup();
 };
 
@@ -1113,7 +1114,7 @@ real_t PhysicsServer2DSW::pin_joint_get_param(RID p_joint, PinJointParam p_param
 	return pin_joint->get_param(p_param);
 }
 
-void PhysicsServer2DSW::damped_string_joint_set_param(RID p_joint, DampedStringParam p_param, real_t p_value) {
+void PhysicsServer2DSW::damped_spring_joint_set_param(RID p_joint, DampedSpringParam p_param, real_t p_value) {
 	Joint2DSW *j = joint_owner.getornull(p_joint);
 	ERR_FAIL_COND(!j);
 	ERR_FAIL_COND(j->get_type() != JOINT_DAMPED_SPRING);
@@ -1122,7 +1123,7 @@ void PhysicsServer2DSW::damped_string_joint_set_param(RID p_joint, DampedStringP
 	dsj->set_param(p_param, p_value);
 }
 
-real_t PhysicsServer2DSW::damped_string_joint_get_param(RID p_joint, DampedStringParam p_param) const {
+real_t PhysicsServer2DSW::damped_spring_joint_get_param(RID p_joint, DampedSpringParam p_param) const {
 	Joint2DSW *j = joint_owner.getornull(p_joint);
 	ERR_FAIL_COND_V(!j, 0);
 	ERR_FAIL_COND_V(j->get_type() != JOINT_DAMPED_SPRING, 0);
@@ -1341,6 +1342,10 @@ PhysicsServer2DSW::PhysicsServer2DSW() {
 	island_count = 0;
 	active_objects = 0;
 	collision_pairs = 0;
+#ifdef NO_THREADS
+	using_threads = false;
+#else
 	using_threads = int(ProjectSettings::get_singleton()->get("physics/2d/thread_model")) == 2;
+#endif
 	flushing_queries = false;
 };

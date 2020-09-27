@@ -81,6 +81,7 @@
 #include "scene/gui/center_container.h"
 #include "scene/gui/check_box.h"
 #include "scene/gui/check_button.h"
+#include "scene/gui/code_edit.h"
 #include "scene/gui/color_picker.h"
 #include "scene/gui/color_rect.h"
 #include "scene/gui/control.h"
@@ -117,7 +118,6 @@
 #include "scene/gui/texture_button.h"
 #include "scene/gui/texture_progress.h"
 #include "scene/gui/texture_rect.h"
-#include "scene/gui/tool_button.h"
 #include "scene/gui/tree.h"
 #include "scene/gui/video_player.h"
 #include "scene/main/canvas_item.h"
@@ -132,6 +132,7 @@
 #include "scene/resources/audio_stream_sample.h"
 #include "scene/resources/bit_map.h"
 #include "scene/resources/box_shape_3d.h"
+#include "scene/resources/camera_effects.h"
 #include "scene/resources/capsule_shape_2d.h"
 #include "scene/resources/capsule_shape_3d.h"
 #include "scene/resources/circle_shape_2d.h"
@@ -154,6 +155,7 @@
 #include "scene/resources/physics_material.h"
 #include "scene/resources/polygon_path_finder.h"
 #include "scene/resources/primitive_meshes.h"
+#include "scene/resources/ray_shape_2d.h"
 #include "scene/resources/ray_shape_3d.h"
 #include "scene/resources/rectangle_shape_2d.h"
 #include "scene/resources/resource_format_text.h"
@@ -162,6 +164,7 @@
 #include "scene/resources/sky_material.h"
 #include "scene/resources/sphere_shape_3d.h"
 #include "scene/resources/surface_tool.h"
+#include "scene/resources/syntax_highlighter.h"
 #include "scene/resources/text_file.h"
 #include "scene/resources/texture.h"
 #include "scene/resources/tile_set.h"
@@ -228,6 +231,7 @@ static Ref<ResourceFormatLoaderDynamicFont> resource_loader_dynamic_font;
 
 static Ref<ResourceFormatLoaderStreamTexture2D> resource_loader_stream_texture;
 static Ref<ResourceFormatLoaderStreamTextureLayered> resource_loader_texture_layered;
+static Ref<ResourceFormatLoaderStreamTexture3D> resource_loader_texture_3d;
 
 static Ref<ResourceFormatLoaderBMFont> resource_loader_bmfont;
 
@@ -249,6 +253,9 @@ void register_scene_types() {
 
 	resource_loader_texture_layered.instance();
 	ResourceLoader::add_resource_format_loader(resource_loader_texture_layered);
+
+	resource_loader_texture_3d.instance();
+	ResourceLoader::add_resource_format_loader(resource_loader_texture_3d);
 
 	resource_saver_text.instance();
 	ResourceSaver::add_resource_format_saver(resource_saver_text, true);
@@ -289,7 +296,7 @@ void register_scene_types() {
 
 	OS::get_singleton()->yield(); //may take time to init
 
-	ClassDB::register_class<ShortCut>();
+	ClassDB::register_class<Shortcut>();
 	ClassDB::register_class<Control>();
 	ClassDB::register_class<Button>();
 	ClassDB::register_class<Label>();
@@ -305,7 +312,6 @@ void register_scene_types() {
 	ClassDB::register_class<MenuButton>();
 	ClassDB::register_class<CheckBox>();
 	ClassDB::register_class<CheckButton>();
-	ClassDB::register_class<ToolButton>();
 	ClassDB::register_class<LinkButton>();
 	ClassDB::register_class<Panel>();
 	ClassDB::register_virtual_class<Range>();
@@ -346,6 +352,9 @@ void register_scene_types() {
 	ClassDB::register_class<Tree>();
 
 	ClassDB::register_class<TextEdit>();
+	ClassDB::register_class<CodeEdit>();
+	ClassDB::register_class<SyntaxHighlighter>();
+	ClassDB::register_class<CodeHighlighter>();
 
 	ClassDB::register_virtual_class<TreeItem>();
 	ClassDB::register_class<OptionButton>();
@@ -369,7 +378,11 @@ void register_scene_types() {
 
 	OS::get_singleton()->yield(); //may take time to init
 
-	AcceptDialog::set_swap_ok_cancel(GLOBAL_DEF("gui/common/swap_ok_cancel", bool(DisplayServer::get_singleton()->get_swap_ok_cancel())));
+	bool swap_cancel_ok = false;
+	if (DisplayServer::get_singleton()) {
+		swap_cancel_ok = GLOBAL_DEF_NOVAL("gui/common/swap_cancel_ok", bool(DisplayServer::get_singleton()->get_swap_cancel_ok()));
+	}
+	AcceptDialog::set_swap_cancel_ok(swap_cancel_ok);
 #endif
 
 	/* REGISTER 3D */
@@ -540,8 +553,12 @@ void register_scene_types() {
 	ClassDB::register_class<VisualShaderNodeVectorDecompose>();
 	ClassDB::register_class<VisualShaderNodeTransformDecompose>();
 	ClassDB::register_class<VisualShaderNodeTexture>();
+	ClassDB::register_virtual_class<VisualShaderNodeSample3D>();
+	ClassDB::register_class<VisualShaderNodeTexture2DArray>();
+	ClassDB::register_class<VisualShaderNodeTexture3D>();
 	ClassDB::register_class<VisualShaderNodeCubemap>();
 	ClassDB::register_virtual_class<VisualShaderNodeUniform>();
+	ClassDB::register_class<VisualShaderNodeUniformRef>();
 	ClassDB::register_class<VisualShaderNodeFloatUniform>();
 	ClassDB::register_class<VisualShaderNodeIntUniform>();
 	ClassDB::register_class<VisualShaderNodeBooleanUniform>();
@@ -550,6 +567,8 @@ void register_scene_types() {
 	ClassDB::register_class<VisualShaderNodeTransformUniform>();
 	ClassDB::register_class<VisualShaderNodeTextureUniform>();
 	ClassDB::register_class<VisualShaderNodeTextureUniformTriplanar>();
+	ClassDB::register_class<VisualShaderNodeTexture2DArrayUniform>();
+	ClassDB::register_class<VisualShaderNodeTexture3DUniform>();
 	ClassDB::register_class<VisualShaderNodeCubemapUniform>();
 	ClassDB::register_class<VisualShaderNodeIf>();
 	ClassDB::register_class<VisualShaderNodeSwitch>();
@@ -559,6 +578,7 @@ void register_scene_types() {
 	ClassDB::register_class<VisualShaderNodeGlobalExpression>();
 	ClassDB::register_class<VisualShaderNodeIs>();
 	ClassDB::register_class<VisualShaderNodeCompare>();
+	ClassDB::register_class<VisualShaderNodeMultiplyAdd>();
 
 	ClassDB::register_class<ShaderMaterial>();
 	ClassDB::register_virtual_class<CanvasItem>();
@@ -689,6 +709,9 @@ void register_scene_types() {
 	ClassDB::register_class<CameraTexture>();
 	ClassDB::register_virtual_class<TextureLayered>();
 	ClassDB::register_virtual_class<ImageTextureLayered>();
+	ClassDB::register_virtual_class<Texture3D>();
+	ClassDB::register_class<ImageTexture3D>();
+	ClassDB::register_class<StreamTexture3D>();
 	ClassDB::register_class<Cubemap>();
 	ClassDB::register_class<CubemapArray>();
 	ClassDB::register_class<Texture2DArray>();
@@ -763,6 +786,7 @@ void register_scene_types() {
 #ifndef DISABLE_DEPRECATED
 	// Dropped in 4.0, near approximation.
 	ClassDB::add_compatibility_class("AnimationTreePlayer", "AnimationTree");
+	ClassDB::add_compatibility_class("ToolButton", "Button");
 
 	// Renamed in 4.0.
 	// Keep alphabetical ordering to easily locate classes and avoid duplicates.
@@ -851,6 +875,7 @@ void register_scene_types() {
 	ClassDB::add_compatibility_class("RemoteTransform", "RemoteTransform3D");
 	ClassDB::add_compatibility_class("RigidBody", "RigidBody3D");
 	ClassDB::add_compatibility_class("Shape", "Shape3D");
+	ClassDB::add_compatibility_class("ShortCut", "Shortcut");
 	ClassDB::add_compatibility_class("Skeleton", "Skeleton3D");
 	ClassDB::add_compatibility_class("SkeletonIK", "SkeletonIK3D");
 	ClassDB::add_compatibility_class("SliderJoint", "SliderJoint3D");
@@ -867,6 +892,7 @@ void register_scene_types() {
 	ClassDB::add_compatibility_class("VehicleBody", "VehicleBody3D");
 	ClassDB::add_compatibility_class("VehicleWheel", "VehicleWheel3D");
 	ClassDB::add_compatibility_class("ViewportContainer", "SubViewportContainer");
+	ClassDB::add_compatibility_class("Viewport", "SubViewport");
 	ClassDB::add_compatibility_class("VisibilityEnabler", "VisibilityEnabler3D");
 	ClassDB::add_compatibility_class("VisibilityNotifier", "VisibilityNotifier3D");
 	ClassDB::add_compatibility_class("VisualServer", "RenderingServer");
@@ -903,8 +929,10 @@ void register_scene_types() {
 		}
 	}
 
-	// Always make the default theme to avoid invalid default font/icon/style in the given theme
-	make_default_theme(default_theme_hidpi, font);
+	// Always make the default theme to avoid invalid default font/icon/style in the given theme.
+	if (RenderingServer::get_singleton()) {
+		make_default_theme(default_theme_hidpi, font);
+	}
 
 	if (theme_path != String()) {
 		Ref<Theme> theme = ResourceLoader::load(theme_path);
@@ -929,6 +957,9 @@ void unregister_scene_types() {
 
 	ResourceLoader::remove_resource_format_loader(resource_loader_texture_layered);
 	resource_loader_texture_layered.unref();
+
+	ResourceLoader::remove_resource_format_loader(resource_loader_texture_3d);
+	resource_loader_texture_3d.unref();
 
 	ResourceLoader::remove_resource_format_loader(resource_loader_stream_texture);
 	resource_loader_stream_texture.unref();

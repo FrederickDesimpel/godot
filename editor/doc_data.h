@@ -62,6 +62,7 @@ public:
 	struct ConstantDoc {
 		String name;
 		String value;
+		bool is_value_valid;
 		String enumeration;
 		String description;
 		bool operator<(const ConstantDoc &p_const) const {
@@ -82,13 +83,18 @@ public:
 		}
 	};
 
+	struct TutorialDoc {
+		String link;
+		String title;
+	};
+
 	struct ClassDoc {
 		String name;
 		String inherits;
 		String category;
 		String brief_description;
 		String description;
-		Vector<String> tutorials;
+		Vector<TutorialDoc> tutorials;
 		Vector<MethodDoc> methods;
 		Vector<MethodDoc> signals;
 		Vector<ConstantDoc> constants;

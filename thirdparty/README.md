@@ -74,6 +74,17 @@ Files extracted from upstream source:
 - all .cpp, .h, and .txt files in ConvectionKernels/
 
 
+## doctest
+- Upstream: https://github.com/onqtam/doctest
+- Version: 1c8da00 (2.4.0)
+- License: MIT
+
+Extracted from .zip provided. Extracted license and header only.
+
+Important: Some files have Godot-made changes.
+They are marked with `// -- GODOT start --` and `// -- GODOT end --`
+comments.
+
 ## enet
 
 - Upstream: http://enet.bespin.org
@@ -148,17 +159,6 @@ Files extracted from upstream source:
 - the `src/` folder, stripped of the `Jamfile` files and the `tools` subfolder
 - the `include/` folder
 - `docs/{FTL.TXT,LICENSE.TXT}`
-
-
-## glad
-
-- Upstream: https://github.com/Dav1dde/glad
-- Version: 0.1.33 (2019)
-- License: MIT
-
-The files we package are automatically generated.
-See the header of glad.c for instructions on how to generate them for
-the GLES version Godot targets.
 
 
 ## glslang
@@ -304,10 +304,10 @@ changes are marked with `// -- GODOT --` comments.
 ## mbedtls
 
 - Upstream: https://tls.mbed.org/
-- Version: 2.16.6 (2020)
+- Version: 2.16.8 (2020)
 - License: Apache 2.0
 
-File extracted from upstream release tarball (`-apache.tgz` variant):
+File extracted from upstream release tarball:
 
 - All `*.h` from `include/mbedtls/` to `thirdparty/mbedtls/include/mbedtls/`
 - All `*.c` from `library/` to `thirdparty/mbedtls/library/`
@@ -426,9 +426,8 @@ Collection of single-file libraries used in Godot components.
   * License: zlib
 - `stb_vorbis.c`
   * Upstream: https://github.com/nothings/stb
-  * Version: 1.19
+  * Version: 1.20
   * License: Public Domain (Unlicense) or MIT
-  * Modifications: `f->temp_offset += (sz+3)&~3;` changed to `f->temp_offset += (sz+7)&~7;` (needed until fixed upstream)
 
 
 ## nanosvg
@@ -446,12 +445,32 @@ Files extracted from the upstream source:
 ## oidn
 
 - Upstream: https://github.com/OpenImageDenoise/oidn
-- Version: TBD
+- Version: 1.1.0 (c58c5216db05ceef4cde5a096862f2eeffd14c06, 2019)
 - License: Apache 2.0
 
 Files extracted from upstream source:
 
-- TBD
+common/* (except tasking.* and CMakeLists.txt)
+core/*
+include/OpenImageDenoise/* (except version.h.in)
+LICENSE.txt
+mkl-dnn/include/*
+mkl-dnn/src/* (except CMakeLists.txt)
+weights/rtlightmap_hdr.tza
+scripts/resource_to_cpp.py
+
+Modified files:
+Modifications are marked with `// -- GODOT start --` and `// -- GODOT end --`.
+Patch files are provided in `oidn/patches/`.
+
+core/autoencoder.cpp
+core/autoencoder.h
+core/common.h
+core/device.cpp
+core/device.h
+core/transfer_function.cpp
+
+scripts/resource_to_cpp.py (used in modules/denoise/resource_to_cpp.py)
 
 
 ## opus
@@ -545,7 +564,7 @@ comments and a patch is provided in the squish/ folder.
 ## tinyexr
 
 - Upstream: https://github.com/syoyo/tinyexr
-- Version: git (4dbd05a22f51a2d7462311569b8b0cba0bbe2ac5, 2020)
+- Version: 1.0.0 (e4b7840d9448b7d57a88384ce26143004f3c0c71, 2020)
 - License: BSD-3-Clause
 
 Files extracted from upstream source:
@@ -603,7 +622,7 @@ Patches in the `patches` directory should be re-applied after updates.
 ## wslay
 
 - Upstream: https://github.com/tatsuhiro-t/wslay
-- Version: 1.1.0 (2018)
+- Version: 1.1.1 (2020)
 - License: MIT
 
 File extracted from upstream release tarball:
@@ -639,7 +658,7 @@ Files extracted from upstream source:
 ## zstd
 
 - Upstream: https://github.com/facebook/zstd
-- Version: 1.4.4 (2019)
+- Version: 1.4.5 (2020)
 - License: BSD-3-Clause
 
 Files extracted from upstream source:

@@ -125,7 +125,7 @@ bool Shader::is_text_shader() const {
 }
 
 bool Shader::has_param(const StringName &p_param) const {
-	return params_cache.has(p_param);
+	return params_cache.has("shader_param/" + p_param);
 }
 
 void Shader::_update_shader() const {
@@ -141,8 +141,6 @@ void Shader::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_default_texture_param", "param"), &Shader::get_default_texture_param);
 
 	ClassDB::bind_method(D_METHOD("has_param", "name"), &Shader::has_param);
-
-	//ClassDB::bind_method(D_METHOD("get_param_list"),&Shader::get_fragment_code);
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "code", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NOEDITOR), "set_code", "get_code");
 

@@ -108,17 +108,26 @@ public:
  * Signal automatically called by parent dialog.
  */
 void ConnectDialog::ok_pressed() {
-	if (dst_method->get_text() == "") {
+	String method_name = dst_method->get_text();
+
+	if (method_name == "") {
 		error->set_text(TTR("Method in target node must be specified."));
 		error->popup_centered();
 		return;
 	}
+
+	if (!method_name.strip_edges().is_valid_identifier()) {
+		error->set_text(TTR("Method name must be a valid identifier."));
+		error->popup_centered();
+		return;
+	}
+
 	Node *target = tree->get_selected();
 	if (!target) {
 		return; // Nothing selected in the tree, not an error.
 	}
 	if (target->get_script().is_null()) {
-		if (!target->has_method(dst_method->get_text())) {
+		if (!target->has_method(method_name)) {
 			error->set_text(TTR("Target method not found. Specify a valid method or attach a script to the target node."));
 			error->popup_centered();
 			return;
@@ -468,11 +477,6 @@ ConnectDialog::ConnectDialog() {
 	advanced->set_text(TTR("Advanced"));
 	advanced->connect("pressed", callable_mp(this, &ConnectDialog::_advanced_pressed));
 
-	// Add spacing so the tree and inspector are the same size.
-	Control *spacing = memnew(Control);
-	spacing->set_custom_minimum_size(Size2(0, 4) * EDSCALE);
-	vbc_right->add_child(spacing);
-
 	deferred = memnew(CheckBox);
 	deferred->set_h_size_flags(0);
 	deferred->set_text(TTR("Deferred"));
@@ -518,6 +522,10 @@ struct _ConnectionsDockMethodInfoSort {
 		return a.name < b.name;
 	}
 };
+
+void ConnectionsDock::_filter_changed(const String &p_text) {
+	update_tree();
+}
 
 /*
  * Post-ConnectDialog callback for creating/editing connections.
@@ -706,7 +714,7 @@ void ConnectionsDock::_open_connection_dialog(TreeItem &item) {
 	const String &signalname = signal;
 	String midname = selectedNode->get_name();
 	for (int i = 0; i < midname.length(); i++) { //TODO: Regex filter may be cleaner.
-		CharType c = midname[i];
+		char32_t c = midname[i];
 		if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_')) {
 			if (c == ' ') {
 				// Replace spaces with underlines.
@@ -746,8 +754,9 @@ void ConnectionsDock::_open_connection_dialog(ConnectDialog::ConnectionData cToE
 	Node *dst = static_cast<Node *>(cToEdit.target);
 
 	if (src && dst) {
+		const String &signalname = cToEdit.signal;
 		connect_dialog->set_title(TTR("Edit Connection:") + cToEdit.signal);
-		connect_dialog->popup_centered();
+		connect_dialog->popup_dialog(signalname);
 		connect_dialog->init(cToEdit, true);
 	}
 }
@@ -894,6 +903,7 @@ void ConnectionsDock::update_tree() {
 		String name;
 
 		if (!did_script) {
+			// Get script signals (including signals from any base scripts).
 			Ref<Script> scr = selectedNode->get_script();
 			if (scr.is_valid()) {
 				scr->get_script_signal_list(&node_signals2);
@@ -919,15 +929,16 @@ void ConnectionsDock::update_tree() {
 			icon = get_theme_icon("Object", "EditorIcons");
 		}
 
-		TreeItem *pitem = nullptr;
+		TreeItem *section_item = nullptr;
 
+		// Create subsections.
 		if (node_signals2.size()) {
-			pitem = tree->create_item(root);
-			pitem->set_text(0, name);
-			pitem->set_icon(0, icon);
-			pitem->set_selectable(0, false);
-			pitem->set_editable(0, false);
-			pitem->set_custom_bg_color(0, get_theme_color("prop_subsection", "Editor"));
+			section_item = tree->create_item(root);
+			section_item->set_text(0, name);
+			section_item->set_icon(0, icon);
+			section_item->set_selectable(0, false);
+			section_item->set_editable(0, false);
+			section_item->set_custom_bg_color(0, get_theme_color("prop_subsection", "Editor"));
 			node_signals2.sort();
 		}
 
@@ -937,6 +948,12 @@ void ConnectionsDock::update_tree() {
 			StringName signal_name = mi.name;
 			String signaldesc = "(";
 			PackedStringArray argnames;
+
+			String filter_text = search_box->get_text();
+			if (!filter_text.is_subsequence_ofi(signal_name)) {
+				continue;
+			}
+
 			if (mi.arguments.size()) {
 				for (int i = 0; i < mi.arguments.size(); i++) {
 					PropertyInfo &pi = mi.arguments[i];
@@ -956,13 +973,14 @@ void ConnectionsDock::update_tree() {
 			}
 			signaldesc += ")";
 
-			TreeItem *item = tree->create_item(pitem);
-			item->set_text(0, String(signal_name) + signaldesc);
+			// Create the children of the subsection - the actual list of signals.
+			TreeItem *signal_item = tree->create_item(section_item);
+			signal_item->set_text(0, String(signal_name) + signaldesc);
 			Dictionary sinfo;
 			sinfo["name"] = signal_name;
 			sinfo["args"] = argnames;
-			item->set_metadata(0, sinfo);
-			item->set_icon(0, get_theme_icon("Signal", "EditorIcons"));
+			signal_item->set_metadata(0, sinfo);
+			signal_item->set_icon(0, get_theme_icon("Signal", "EditorIcons"));
 
 			// Set tooltip with the signal's documentation.
 			{
@@ -998,7 +1016,7 @@ void ConnectionsDock::update_tree() {
 				}
 
 				// "::" separators used in make_custom_tooltip for formatting.
-				item->set_tooltip(0, String(signal_name) + "::" + signaldesc + "::" + descr);
+				signal_item->set_tooltip(0, String(signal_name) + "::" + signaldesc + "::" + descr);
 			}
 
 			// List existing connections
@@ -1035,11 +1053,11 @@ void ConnectionsDock::update_tree() {
 					path += ")";
 				}
 
-				TreeItem *item2 = tree->create_item(item);
-				item2->set_text(0, path);
+				TreeItem *connection_item = tree->create_item(signal_item);
+				connection_item->set_text(0, path);
 				Connection cd = c;
-				item2->set_metadata(0, cd);
-				item2->set_icon(0, get_theme_icon("Slot", "EditorIcons"));
+				connection_item->set_metadata(0, cd);
+				connection_item->set_icon(0, get_theme_icon("Slot", "EditorIcons"));
 			}
 		}
 
@@ -1059,6 +1077,14 @@ ConnectionsDock::ConnectionsDock(EditorNode *p_editor) {
 	set_name(TTR("Signals"));
 
 	VBoxContainer *vbc = this;
+
+	search_box = memnew(LineEdit);
+	search_box->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+	search_box->set_placeholder(TTR("Filter signals"));
+	search_box->set_right_icon(get_theme_icon("Search", "EditorIcons"));
+	search_box->set_clear_button_enabled(true);
+	search_box->connect("text_changed", callable_mp(this, &ConnectionsDock::_filter_changed));
+	vbc->add_child(search_box);
 
 	tree = memnew(ConnectionsDockTree);
 	tree->set_columns(1);

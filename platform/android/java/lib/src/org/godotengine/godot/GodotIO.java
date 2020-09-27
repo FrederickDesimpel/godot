@@ -32,6 +32,7 @@ package org.godotengine.godot;
 
 import org.godotengine.godot.input.*;
 
+import android.app.Activity;
 import android.content.*;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -51,7 +52,7 @@ import java.util.Locale;
 
 public class GodotIO {
 	AssetManager am;
-	Godot activity;
+	final Activity activity;
 	GodotEditText edit;
 
 	final int SCREEN_LANDSCAPE = 0;
@@ -314,7 +315,7 @@ public class GodotIO {
 		dirs.remove(id);
 	}
 
-	GodotIO(Godot p_activity) {
+	GodotIO(Activity p_activity) {
 		am = p_activity.getAssets();
 		activity = p_activity;
 		//streams = new HashMap<Integer, AssetData>();
@@ -460,9 +461,9 @@ public class GodotIO {
 		return (int)(metrics.density * 160f);
 	}
 
-	public void showKeyboard(String p_existing_text, int p_max_input_length, int p_cursor_start, int p_cursor_end) {
+	public void showKeyboard(String p_existing_text, boolean p_multiline, int p_max_input_length, int p_cursor_start, int p_cursor_end) {
 		if (edit != null)
-			edit.showKeyboard(p_existing_text, p_max_input_length, p_cursor_start, p_cursor_end);
+			edit.showKeyboard(p_existing_text, p_multiline, p_max_input_length, p_cursor_start, p_cursor_end);
 
 		//InputMethodManager inputMgr = (InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
 		//inputMgr.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);

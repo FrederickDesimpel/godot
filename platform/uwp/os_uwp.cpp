@@ -35,7 +35,6 @@
 
 #include "core/io/marshalls.h"
 #include "core/project_settings.h"
-#include "drivers/gles2/rasterizer_gles2.h"
 #include "drivers/unix/ip_unix.h"
 #include "drivers/windows/dir_access_windows.h"
 #include "drivers/windows/file_access_windows.h"
@@ -297,7 +296,7 @@ Error OS_UWP::initialize(const VideoMode &p_desired, int p_video_driver, int p_a
 void OS_UWP::set_clipboard(const String &p_text) {
 	DataPackage ^ clip = ref new DataPackage();
 	clip->RequestedOperation = DataPackageOperation::Copy;
-	clip->SetText(ref new Platform::String((const wchar_t *)p_text.c_str()));
+	clip->SetText(ref new Platform::String((LPCWSTR)(p_text.utf16().get_data())));
 
 	Clipboard::SetContent(clip);
 };
@@ -347,8 +346,8 @@ void OS_UWP::finalize_core() {
 }
 
 void OS_UWP::alert(const String &p_alert, const String &p_title) {
-	Platform::String ^ alert = ref new Platform::String(p_alert.c_str());
-	Platform::String ^ title = ref new Platform::String(p_title.c_str());
+	Platform::String ^ alert = ref new Platform::String((LPCWSTR)(p_alert.utf16().get_data()));
+	Platform::String ^ title = ref new Platform::String((LPCWSTR)(p_title.utf16().get_data()));
 
 	MessageDialog ^ msg = ref new MessageDialog(alert, title);
 
@@ -535,11 +534,28 @@ void OS_UWP::delay_usec(uint32_t p_usec) const {
 
 uint64_t OS_UWP::get_ticks_usec() const {
 	uint64_t ticks;
-	uint64_t time;
+
 	// This is the number of clock ticks since start
 	QueryPerformanceCounter((LARGE_INTEGER *)&ticks);
+
 	// Divide by frequency to get the time in seconds
-	time = ticks * 1000000L / ticks_per_second;
+	// original calculation shown below is subject to overflow
+	// with high ticks_per_second and a number of days since the last reboot.
+	// time = ticks * 1000000L / ticks_per_second;
+
+	// we can prevent this by either using 128 bit math
+	// or separating into a calculation for seconds, and the fraction
+	uint64_t seconds = ticks / ticks_per_second;
+
+	// compiler will optimize these two into one divide
+	uint64_t leftover = ticks % ticks_per_second;
+
+	// remainder
+	uint64_t time = (leftover * 1000000L) / ticks_per_second;
+
+	// seconds
+	time += seconds * 1000000L;
+
 	// Subtract the time at game start to get
 	// the time since the game started
 	time -= ticks_start;
@@ -698,7 +714,7 @@ bool OS_UWP::has_virtual_keyboard() const {
 	return UIViewSettings::GetForCurrentView()->UserInteractionMode == UserInteractionMode::Touch;
 }
 
-void OS_UWP::show_virtual_keyboard(const String &p_existing_text, const Rect2 &p_screen_rect, int p_max_input_length, int p_cursor_start, int p_cursor_end) {
+void OS_UWP::show_virtual_keyboard(const String &p_existing_text, const Rect2 &p_screen_rect, bool p_multiline, int p_max_input_length, int p_cursor_start, int p_cursor_end) {
 	InputPane ^ pane = InputPane::GetForCurrentView();
 	pane->TryShow();
 }
@@ -722,7 +738,7 @@ static String format_error_message(DWORD id) {
 
 Error OS_UWP::open_dynamic_library(const String p_path, void *&p_library_handle, bool p_also_set_library_path) {
 	String full_path = "game/" + p_path;
-	p_library_handle = (void *)LoadPackagedLibrary(full_path.c_str(), 0);
+	p_library_handle = (void *)LoadPackagedLibrary((LPCWSTR)(full_path.utf16().get_data()), 0);
 	ERR_FAIL_COND_V_MSG(!p_library_handle, ERR_CANT_OPEN, "Can't open dynamic library: " + full_path + ", error: " + format_error_message(GetLastError()) + ".");
 	return OK;
 }

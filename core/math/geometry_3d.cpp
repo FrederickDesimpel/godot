@@ -1,5 +1,5 @@
 /*************************************************************************/
-/*  geometry.cpp                                                         */
+/*  geometry_3d.cpp                                                      */
 /*************************************************************************/
 /*                       This file is part of:                           */
 /*                           GODOT ENGINE                                */
@@ -648,7 +648,7 @@ Geometry3D::MeshData Geometry3D::build_convex_mesh(const Vector<Plane> &p_planes
 
 		Vector<Vector3> vertices;
 
-		Vector3 center = p.get_any_point();
+		Vector3 center = p.center();
 		// make a quad clockwise
 		vertices.push_back(center - up * subplane_size + right * subplane_size);
 		vertices.push_back(center - up * subplane_size - right * subplane_size);
@@ -992,6 +992,8 @@ Vector<uint32_t> Geometry3D::generate_edf(const Vector<bool> &p_voxels, const Ve
 			w[i] = uint32_t(Math::sqrt(work_memory[i]));
 		}
 	}
+
+	memdelete_arr(work_memory);
 
 	return ret;
 }

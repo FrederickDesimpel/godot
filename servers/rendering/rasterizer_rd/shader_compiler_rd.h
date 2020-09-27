@@ -68,6 +68,8 @@ public:
 		String fragment_global;
 		String fragment;
 		String light;
+		String compute_global;
+		String compute;
 
 		bool uses_global_textures;
 		bool uses_fragment_time;
@@ -96,7 +98,7 @@ private:
 	String _get_sampler_name(ShaderLanguage::TextureFilter p_filter, ShaderLanguage::TextureRepeat p_repeat);
 
 	void _dump_function_deps(const ShaderLanguage::ShaderNode *p_node, const StringName &p_for_func, const Map<StringName, String> &p_func_code, String &r_to_add, Set<StringName> &added);
-	String _dump_node_code(const ShaderLanguage::Node *p_node, int p_level, GeneratedCode &r_gen_code, IdentifierActions &p_actions, const DefaultIdentifierActions &p_default_actions, bool p_assigning);
+	String _dump_node_code(const ShaderLanguage::Node *p_node, int p_level, GeneratedCode &r_gen_code, IdentifierActions &p_actions, const DefaultIdentifierActions &p_default_actions, bool p_assigning, bool p_scope = true);
 
 	const ShaderLanguage::ShaderNode *shader;
 	const ShaderLanguage::FunctionNode *function;
@@ -104,6 +106,7 @@ private:
 	StringName vertex_name;
 	StringName fragment_name;
 	StringName light_name;
+	StringName compute_name;
 	StringName time_name;
 	Set<StringName> texture_functions;
 

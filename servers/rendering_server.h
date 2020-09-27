@@ -39,6 +39,7 @@
 #include "core/typed_array.h"
 #include "core/variant.h"
 #include "servers/display_server.h"
+#include "servers/rendering/rendering_device.h"
 #include "servers/rendering/shader_language.h"
 
 class RenderingServer : public Object {
@@ -47,6 +48,7 @@ class RenderingServer : public Object {
 	static RenderingServer *singleton;
 
 	int mm_policy;
+	bool render_loop_enabled = true;
 
 	void _camera_set_orthogonal(RID p_camera, float p_size, float p_z_near, float p_z_far);
 	void _canvas_item_add_style_box(RID p_item, const Rect2 &p_rect, const Rect2 &p_source, RID p_texture, const Vector<float> &p_margins, const Color &p_modulate = Color(1, 1, 1));
@@ -96,12 +98,12 @@ public:
 
 	virtual RID texture_2d_create(const Ref<Image> &p_image) = 0;
 	virtual RID texture_2d_layered_create(const Vector<Ref<Image>> &p_layers, TextureLayeredType p_layered_type) = 0;
-	virtual RID texture_3d_create(const Vector<Ref<Image>> &p_slices) = 0; //all slices, then all the mipmaps, must be coherent
+	virtual RID texture_3d_create(Image::Format, int p_width, int p_height, int p_depth, bool p_mipmaps, const Vector<Ref<Image>> &p_data) = 0; //all slices, then all the mipmaps, must be coherent
 	virtual RID texture_proxy_create(RID p_base) = 0;
 
 	virtual void texture_2d_update_immediate(RID p_texture, const Ref<Image> &p_image, int p_layer = 0) = 0; //mostly used for video and streaming
 	virtual void texture_2d_update(RID p_texture, const Ref<Image> &p_image, int p_layer = 0) = 0;
-	virtual void texture_3d_update(RID p_texture, const Ref<Image> &p_image, int p_depth, int p_mipmap) = 0;
+	virtual void texture_3d_update(RID p_texture, const Vector<Ref<Image>> &p_data) = 0;
 	virtual void texture_proxy_update(RID p_texture, RID p_proxy_to) = 0;
 
 	//these two APIs can be used together or in combination with the others.
@@ -111,7 +113,7 @@ public:
 
 	virtual Ref<Image> texture_2d_get(RID p_texture) const = 0;
 	virtual Ref<Image> texture_2d_layer_get(RID p_texture, int p_layer) const = 0;
-	virtual Ref<Image> texture_3d_slice_get(RID p_texture, int p_depth, int p_mipmap) const = 0;
+	virtual Vector<Ref<Image>> texture_3d_get(RID p_texture) const = 0;
 
 	virtual void texture_replace(RID p_texture, RID p_by_texture) = 0;
 	virtual void texture_set_size_override(RID p_texture, int p_width, int p_height) = 0;
@@ -389,6 +391,7 @@ public:
 		LIGHT_PARAM_SHADOW_BIAS,
 		LIGHT_PARAM_SHADOW_PANCAKE_SIZE,
 		LIGHT_PARAM_SHADOW_BLUR,
+		LIGHT_PARAM_SHADOW_VOLUMETRIC_FOG_FADE,
 		LIGHT_PARAM_TRANSMITTANCE_BIAS,
 		LIGHT_PARAM_MAX
 	};
@@ -405,7 +408,15 @@ public:
 	virtual void light_set_negative(RID p_light, bool p_enable) = 0;
 	virtual void light_set_cull_mask(RID p_light, uint32_t p_mask) = 0;
 	virtual void light_set_reverse_cull_face_mode(RID p_light, bool p_enabled) = 0;
-	virtual void light_set_use_gi(RID p_light, bool p_enable) = 0;
+
+	enum LightBakeMode {
+		LIGHT_BAKE_DISABLED,
+		LIGHT_BAKE_DYNAMIC,
+		LIGHT_BAKE_STATIC,
+	};
+
+	virtual void light_set_bake_mode(RID p_light, LightBakeMode p_bake_mode) = 0;
+	virtual void light_set_max_sdfgi_cascade(RID p_light, uint32_t p_cascade) = 0;
 
 	// omni light
 	enum LightOmniShadowMode {
@@ -419,7 +430,7 @@ public:
 	enum LightDirectionalShadowMode {
 		LIGHT_DIRECTIONAL_SHADOW_ORTHOGONAL,
 		LIGHT_DIRECTIONAL_SHADOW_PARALLEL_2_SPLITS,
-		LIGHT_DIRECTIONAL_SHADOW_PARALLEL_4_SPLITS
+		LIGHT_DIRECTIONAL_SHADOW_PARALLEL_4_SPLITS,
 	};
 
 	virtual void light_directional_set_shadow_mode(RID p_light, LightDirectionalShadowMode p_mode) = 0;
@@ -428,7 +439,6 @@ public:
 	enum LightDirectionalShadowDepthRangeMode {
 		LIGHT_DIRECTIONAL_SHADOW_DEPTH_RANGE_STABLE,
 		LIGHT_DIRECTIONAL_SHADOW_DEPTH_RANGE_OPTIMIZED,
-
 	};
 
 	virtual void light_directional_set_shadow_depth_range_mode(RID p_light, LightDirectionalShadowDepthRangeMode p_range_mode) = 0;
@@ -444,9 +454,16 @@ public:
 
 	virtual void reflection_probe_set_update_mode(RID p_probe, ReflectionProbeUpdateMode p_mode) = 0;
 	virtual void reflection_probe_set_intensity(RID p_probe, float p_intensity) = 0;
-	virtual void reflection_probe_set_interior_ambient(RID p_probe, const Color &p_color) = 0;
-	virtual void reflection_probe_set_interior_ambient_energy(RID p_probe, float p_energy) = 0;
-	virtual void reflection_probe_set_interior_ambient_probe_contribution(RID p_probe, float p_contrib) = 0;
+
+	enum ReflectionProbeAmbientMode {
+		REFLECTION_PROBE_AMBIENT_DISABLED,
+		REFLECTION_PROBE_AMBIENT_ENVIRONMENT,
+		REFLECTION_PROBE_AMBIENT_COLOR,
+	};
+
+	virtual void reflection_probe_set_ambient_mode(RID p_probe, ReflectionProbeAmbientMode p_mode) = 0;
+	virtual void reflection_probe_set_ambient_color(RID p_probe, const Color &p_color) = 0;
+	virtual void reflection_probe_set_ambient_energy(RID p_probe, float p_energy) = 0;
 	virtual void reflection_probe_set_max_distance(RID p_probe, float p_distance) = 0;
 	virtual void reflection_probe_set_extents(RID p_probe, const Vector3 &p_extents) = 0;
 	virtual void reflection_probe_set_origin_offset(RID p_probe, const Vector3 &p_offset) = 0;
@@ -521,6 +538,13 @@ public:
 	virtual void gi_probe_set_anisotropy_strength(RID p_gi_probe, float p_strength) = 0;
 	virtual float gi_probe_get_anisotropy_strength(RID p_gi_probe) const = 0;
 
+	enum GIProbeQuality {
+		GI_PROBE_QUALITY_LOW,
+		GI_PROBE_QUALITY_HIGH,
+	};
+
+	virtual void gi_probe_set_quality(GIProbeQuality) = 0;
+
 	/* LIGHTMAP */
 
 	virtual RID lightmap_create() = 0;
@@ -540,7 +564,7 @@ public:
 
 	virtual RID particles_create() = 0;
 
-	virtual void particles_set_emitting(RID p_particles, bool p_emitting) = 0;
+	virtual void particles_set_emitting(RID p_particles, bool p_enable) = 0;
 	virtual bool particles_get_emitting(RID p_particles) = 0;
 	virtual void particles_set_amount(RID p_particles, int p_amount) = 0;
 	virtual void particles_set_lifetime(RID p_particles, float p_lifetime) = 0;
@@ -557,6 +581,18 @@ public:
 	virtual bool particles_is_inactive(RID p_particles) = 0;
 	virtual void particles_request_process(RID p_particles) = 0;
 	virtual void particles_restart(RID p_particles) = 0;
+
+	virtual void particles_set_subemitter(RID p_particles, RID p_subemitter_particles) = 0;
+
+	enum ParticlesEmitFlags {
+		PARTICLES_EMIT_FLAG_POSITION = 1,
+		PARTICLES_EMIT_FLAG_ROTATION_SCALE = 2,
+		PARTICLES_EMIT_FLAG_VELOCITY = 4,
+		PARTICLES_EMIT_FLAG_COLOR = 8,
+		PARTICLES_EMIT_FLAG_CUSTOM = 16
+	};
+
+	virtual void particles_emit(RID p_particles, const Transform &p_transform, const Vector3 &p_velocity, const Color &p_color, const Color &p_custom, uint32_t p_emit_flags) = 0;
 
 	enum ParticlesDrawOrder {
 		PARTICLES_DRAW_ORDER_INDEX,
@@ -584,16 +620,6 @@ public:
 	virtual void camera_set_environment(RID p_camera, RID p_env) = 0;
 	virtual void camera_set_camera_effects(RID p_camera, RID p_camera_effects) = 0;
 	virtual void camera_set_use_vertical_aspect(RID p_camera, bool p_enable) = 0;
-
-	/*
-	enum ParticlesCollisionMode {
-		PARTICLES_COLLISION_NONE,
-		PARTICLES_COLLISION_TEXTURE,
-		PARTICLES_COLLISION_CUBEMAP,
-	};
-
-	virtual void particles_set_collision(RID p_particles,ParticlesCollisionMode p_mode,const Transform&, p_xform,const RID p_depth_tex,const RID p_normal_tex)=0;
-	*/
 
 	/* VIEWPORT TARGET API */
 
@@ -689,9 +715,12 @@ public:
 		VIEWPORT_DEBUG_DRAW_DIRECTIONAL_SHADOW_ATLAS,
 		VIEWPORT_DEBUG_DRAW_SCENE_LUMINANCE,
 		VIEWPORT_DEBUG_DRAW_SSAO,
-		VIEWPORT_DEBUG_DRAW_ROUGHNESS_LIMITER,
 		VIEWPORT_DEBUG_DRAW_PSSM_SPLITS,
 		VIEWPORT_DEBUG_DRAW_DECAL_ATLAS,
+		VIEWPORT_DEBUG_DRAW_SDFGI,
+		VIEWPORT_DEBUG_DRAW_SDFGI_PROBES,
+		VIEWPORT_DEBUG_DRAW_GI_BUFFER,
+
 	};
 
 	virtual void viewport_set_debug_draw(RID p_viewport, ViewportDebugDraw p_draw) = 0;
@@ -705,7 +734,9 @@ public:
 	/* SKY API */
 
 	enum SkyMode {
+		SKY_MODE_AUTOMATIC,
 		SKY_MODE_QUALITY,
+		SKY_MODE_INCREMENTAL,
 		SKY_MODE_REALTIME
 	};
 
@@ -766,6 +797,7 @@ public:
 	virtual void environment_set_glow(RID p_env, bool p_enable, int p_level_flags, float p_intensity, float p_strength, float p_mix, float p_bloom_threshold, EnvironmentGlowBlendMode p_blend_mode, float p_hdr_bleed_threshold, float p_hdr_bleed_scale, float p_hdr_luminance_cap) = 0;
 
 	virtual void environment_glow_set_use_bicubic_upscale(bool p_enable) = 0;
+	virtual void environment_glow_set_use_high_quality(bool p_enable) = 0;
 
 	enum EnvironmentToneMapper {
 		ENV_TONE_MAPPER_LINEAR,
@@ -806,13 +838,62 @@ public:
 
 	virtual void environment_set_ssao_quality(EnvironmentSSAOQuality p_quality, bool p_half_size) = 0;
 
-	virtual void environment_set_fog(RID p_env, bool p_enable, const Color &p_color, const Color &p_sun_color, float p_sun_amount) = 0;
-	virtual void environment_set_fog_depth(RID p_env, bool p_enable, float p_depth_begin, float p_depth_end, float p_depth_curve, bool p_transmit, float p_transmit_curve) = 0;
-	virtual void environment_set_fog_height(RID p_env, bool p_enable, float p_min_height, float p_max_height, float p_height_curve) = 0;
+	enum EnvironmentSDFGICascades {
+		ENV_SDFGI_CASCADES_4,
+		ENV_SDFGI_CASCADES_6,
+		ENV_SDFGI_CASCADES_8,
+	};
+
+	enum EnvironmentSDFGIYScale {
+		ENV_SDFGI_Y_SCALE_DISABLED,
+		ENV_SDFGI_Y_SCALE_75_PERCENT,
+		ENV_SDFGI_Y_SCALE_50_PERCENT
+	};
+
+	virtual void environment_set_sdfgi(RID p_env, bool p_enable, EnvironmentSDFGICascades p_cascades, float p_min_cell_size, EnvironmentSDFGIYScale p_y_scale, bool p_use_occlusion, bool p_use_multibounce, bool p_read_sky, float p_energy, float p_normal_bias, float p_probe_bias) = 0;
+
+	enum EnvironmentSDFGIRayCount {
+		ENV_SDFGI_RAY_COUNT_8,
+		ENV_SDFGI_RAY_COUNT_16,
+		ENV_SDFGI_RAY_COUNT_32,
+		ENV_SDFGI_RAY_COUNT_64,
+		ENV_SDFGI_RAY_COUNT_96,
+		ENV_SDFGI_RAY_COUNT_128,
+		ENV_SDFGI_RAY_COUNT_MAX,
+	};
+
+	virtual void environment_set_sdfgi_ray_count(EnvironmentSDFGIRayCount p_ray_count) = 0;
+
+	enum EnvironmentSDFGIFramesToConverge {
+		ENV_SDFGI_CONVERGE_IN_5_FRAMES,
+		ENV_SDFGI_CONVERGE_IN_10_FRAMES,
+		ENV_SDFGI_CONVERGE_IN_15_FRAMES,
+		ENV_SDFGI_CONVERGE_IN_20_FRAMES,
+		ENV_SDFGI_CONVERGE_IN_25_FRAMES,
+		ENV_SDFGI_CONVERGE_IN_30_FRAMES,
+		ENV_SDFGI_CONVERGE_MAX
+	};
+
+	virtual void environment_set_sdfgi_frames_to_converge(EnvironmentSDFGIFramesToConverge p_frames) = 0;
+
+	virtual void environment_set_fog(RID p_env, bool p_enable, const Color &p_light_color, float p_light_energy, float p_sun_scatter, float p_density, float p_height, float p_height_density) = 0;
+
+	enum EnvVolumetricFogShadowFilter {
+		ENV_VOLUMETRIC_FOG_SHADOW_FILTER_DISABLED,
+		ENV_VOLUMETRIC_FOG_SHADOW_FILTER_LOW,
+		ENV_VOLUMETRIC_FOG_SHADOW_FILTER_MEDIUM,
+		ENV_VOLUMETRIC_FOG_SHADOW_FILTER_HIGH,
+	};
+
+	virtual void environment_set_volumetric_fog(RID p_env, bool p_enable, float p_density, const Color &p_light, float p_light_energy, float p_length, float p_detail_spread, float p_gi_inject, EnvVolumetricFogShadowFilter p_shadow_filter) = 0;
+	virtual void environment_set_volumetric_fog_volume_size(int p_size, int p_depth) = 0;
+	virtual void environment_set_volumetric_fog_filter_active(bool p_enable) = 0;
+	virtual void environment_set_volumetric_fog_directional_shadow_shrink_size(int p_shrink_size) = 0;
+	virtual void environment_set_volumetric_fog_positional_shadow_shrink_size(int p_shrink_size) = 0;
 
 	virtual Ref<Image> environment_bake_panorama(RID p_env, bool p_bake_irradiance, const Size2i &p_size) = 0;
 
-	virtual void screen_space_roughness_limiter_set_active(bool p_enable, float p_curve) = 0;
+	virtual void screen_space_roughness_limiter_set_active(bool p_enable, float p_amount, float p_limit) = 0;
 
 	enum SubSurfaceScatteringQuality {
 		SUB_SURFACE_SCATTERING_QUALITY_DISABLED,
@@ -1206,6 +1287,8 @@ public:
 	virtual RID get_test_texture();
 	virtual RID get_white_texture();
 
+	virtual void sdfgi_set_debug_probe_select(const Vector3 &p_position, const Vector3 &p_dir) = 0;
+
 	virtual RID make_sphere_mesh(int p_lats, int p_lons, float p_radius);
 
 	virtual void mesh_add_surface_from_mesh_data(RID p_mesh, const Geometry3D::MeshData &p_mesh_data);
@@ -1229,6 +1312,11 @@ public:
 
 	virtual bool is_low_end() const = 0;
 
+	RenderingDevice *create_local_rendering_device() const;
+
+	bool is_render_loop_enabled() const;
+	void set_render_loop_enabled(bool p_enabled);
+
 	RenderingServer();
 	virtual ~RenderingServer();
 };
@@ -1244,10 +1332,12 @@ VARIANT_ENUM_CAST(RenderingServer::BlendShapeMode);
 VARIANT_ENUM_CAST(RenderingServer::MultimeshTransformFormat);
 VARIANT_ENUM_CAST(RenderingServer::LightType);
 VARIANT_ENUM_CAST(RenderingServer::LightParam);
+VARIANT_ENUM_CAST(RenderingServer::LightBakeMode);
 VARIANT_ENUM_CAST(RenderingServer::LightOmniShadowMode);
 VARIANT_ENUM_CAST(RenderingServer::LightDirectionalShadowMode);
 VARIANT_ENUM_CAST(RenderingServer::LightDirectionalShadowDepthRangeMode);
 VARIANT_ENUM_CAST(RenderingServer::ReflectionProbeUpdateMode);
+VARIANT_ENUM_CAST(RenderingServer::ReflectionProbeAmbientMode);
 VARIANT_ENUM_CAST(RenderingServer::DecalTexture);
 VARIANT_ENUM_CAST(RenderingServer::ParticlesDrawOrder);
 VARIANT_ENUM_CAST(RenderingServer::ViewportUpdateMode);

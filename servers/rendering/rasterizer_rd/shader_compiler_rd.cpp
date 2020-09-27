@@ -399,6 +399,9 @@ void ShaderCompilerRD::_dump_function_deps(const SL::ShaderNode *p_node, const S
 			if (i > 0) {
 				header += ", ";
 			}
+			if (fnode->arguments[i].is_const) {
+				header += "const ";
+			}
 			if (fnode->arguments[i].type == SL::TYPE_STRUCT) {
 				header += _qualstr(fnode->arguments[i].qualifier) + _mkid(fnode->arguments[i].type_str) + " " + _mkid(fnode->arguments[i].name);
 			} else {
@@ -479,7 +482,7 @@ static String _get_global_variable_from_type_and_index(const String &p_buffer, c
 	}
 }
 
-String ShaderCompilerRD::_dump_node_code(const SL::Node *p_node, int p_level, GeneratedCode &r_gen_code, IdentifierActions &p_actions, const DefaultIdentifierActions &p_default_actions, bool p_assigning) {
+String ShaderCompilerRD::_dump_node_code(const SL::Node *p_node, int p_level, GeneratedCode &r_gen_code, IdentifierActions &p_actions, const DefaultIdentifierActions &p_default_actions, bool p_assigning, bool p_use_scope) {
 	String code;
 
 	switch (p_node->type) {
@@ -534,6 +537,7 @@ String ShaderCompilerRD::_dump_node_code(const SL::Node *p_node, int p_level, Ge
 
 				r_gen_code.vertex_global += struct_code;
 				r_gen_code.fragment_global += struct_code;
+				r_gen_code.compute_global += struct_code;
 			}
 
 			int max_texture_uniforms = 0;
@@ -588,6 +592,7 @@ String ShaderCompilerRD::_dump_node_code(const SL::Node *p_node, int p_level, Ge
 				if (SL::is_sampler_type(E->get().type)) {
 					r_gen_code.vertex_global += ucode;
 					r_gen_code.fragment_global += ucode;
+					r_gen_code.compute_global += ucode;
 
 					GeneratedCode::Texture texture;
 					texture.name = E->key();
@@ -697,6 +702,7 @@ String ShaderCompilerRD::_dump_node_code(const SL::Node *p_node, int p_level, Ge
 				vcode += ";\n";
 				r_gen_code.vertex_global += "layout(location=" + itos(index) + ") " + interp_mode + "out " + vcode;
 				r_gen_code.fragment_global += "layout(location=" + itos(index) + ") " + interp_mode + "in " + vcode;
+				r_gen_code.compute_global += "layout(location=" + itos(index) + ") " + interp_mode + "out " + vcode;
 				index++;
 			}
 
@@ -711,11 +717,17 @@ String ShaderCompilerRD::_dump_node_code(const SL::Node *p_node, int p_level, Ge
 					gcode += _typestr(cnode.type);
 				}
 				gcode += " " + _mkid(String(cnode.name));
+				if (cnode.array_size > 0) {
+					gcode += "[";
+					gcode += itos(cnode.array_size);
+					gcode += "]";
+				}
 				gcode += "=";
 				gcode += _dump_node_code(cnode.initializer, p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
 				gcode += ";\n";
 				r_gen_code.vertex_global += gcode;
 				r_gen_code.fragment_global += gcode;
+				r_gen_code.compute_global += gcode;
 			}
 
 			Map<StringName, String> function_code;
@@ -733,6 +745,7 @@ String ShaderCompilerRD::_dump_node_code(const SL::Node *p_node, int p_level, Ge
 
 			Set<StringName> added_vtx;
 			Set<StringName> added_fragment; //share for light
+			Set<StringName> added_compute; //share for light
 
 			for (int i = 0; i < pnode->functions.size(); i++) {
 				SL::FunctionNode *fnode = pnode->functions[i].function;
@@ -755,6 +768,12 @@ String ShaderCompilerRD::_dump_node_code(const SL::Node *p_node, int p_level, Ge
 					_dump_function_deps(pnode, fnode->name, function_code, r_gen_code.fragment_global, added_fragment);
 					r_gen_code.light = function_code[light_name];
 				}
+
+				if (fnode->name == compute_name) {
+					_dump_function_deps(pnode, fnode->name, function_code, r_gen_code.compute_global, added_compute);
+					r_gen_code.compute = function_code[compute_name];
+				}
+
 				function = nullptr;
 			}
 
@@ -967,7 +986,7 @@ String ShaderCompilerRD::_dump_node_code(const SL::Node *p_node, int p_level, Ge
 
 			if (anode->call_expression != nullptr) {
 				code += ".";
-				code += _dump_node_code(anode->call_expression, p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+				code += _dump_node_code(anode->call_expression, p_level, r_gen_code, p_actions, p_default_actions, p_assigning, false);
 			}
 
 			if (anode->index_expression != nullptr) {
@@ -988,7 +1007,29 @@ String ShaderCompilerRD::_dump_node_code(const SL::Node *p_node, int p_level, Ge
 		} break;
 		case SL::Node::TYPE_CONSTANT: {
 			SL::ConstantNode *cnode = (SL::ConstantNode *)p_node;
-			return get_constant_text(cnode->datatype, cnode->values);
+
+			if (cnode->array_size == 0) {
+				return get_constant_text(cnode->datatype, cnode->values);
+			} else {
+				if (cnode->get_datatype() == SL::TYPE_STRUCT) {
+					code += _mkid(cnode->struct_name);
+				} else {
+					code += _typestr(cnode->datatype);
+				}
+				code += "[";
+				code += itos(cnode->array_size);
+				code += "]";
+				code += "(";
+				for (int i = 0; i < cnode->array_size; i++) {
+					if (i > 0) {
+						code += ",";
+					} else {
+						code += "";
+					}
+					code += _dump_node_code(cnode->array_declarations[0].initializer[i], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+				}
+				code += ")";
+			}
 
 		} break;
 		case SL::Node::TYPE_OPERATOR: {
@@ -1113,7 +1154,13 @@ String ShaderCompilerRD::_dump_node_code(const SL::Node *p_node, int p_level, Ge
 				} break;
 
 				default: {
-					code = "(" + _dump_node_code(onode->arguments[0], p_level, r_gen_code, p_actions, p_default_actions, p_assigning) + _opstr(onode->op) + _dump_node_code(onode->arguments[1], p_level, r_gen_code, p_actions, p_default_actions, p_assigning) + ")";
+					if (p_use_scope) {
+						code += "(";
+					}
+					code += _dump_node_code(onode->arguments[0], p_level, r_gen_code, p_actions, p_default_actions, p_assigning) + _opstr(onode->op) + _dump_node_code(onode->arguments[1], p_level, r_gen_code, p_actions, p_default_actions, p_assigning);
+					if (p_use_scope) {
+						code += ")";
+					}
 					break;
 				}
 			}
@@ -1209,6 +1256,8 @@ Error ShaderCompilerRD::compile(RS::ShaderMode p_mode, const String &p_code, Ide
 	r_gen_code.vertex_global = String();
 	r_gen_code.fragment = String();
 	r_gen_code.fragment_global = String();
+	r_gen_code.compute = String();
+	r_gen_code.compute_global = String();
 	r_gen_code.light = String();
 	r_gen_code.uses_fragment_time = false;
 	r_gen_code.uses_vertex_time = false;
@@ -1230,6 +1279,7 @@ void ShaderCompilerRD::initialize(DefaultIdentifierActions p_actions) {
 
 	vertex_name = "vertex";
 	fragment_name = "fragment";
+	compute_name = "compute";
 	light_name = "light";
 	time_name = "TIME";
 
